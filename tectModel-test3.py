@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[31]:
+# In[27]:
 
 
 #load in parent stuff
@@ -10,7 +10,7 @@ import nb_load_stuff
 from tectModelClass import *
 
 
-# In[32]:
+# In[28]:
 
 
 #If run through Docker we'll point at the local 'unsupported dir.'
@@ -28,7 +28,7 @@ except:
     pass
 
 
-# In[33]:
+# In[29]:
 
 
 from unsupported_dan.UWsubduction.base_params import *
@@ -37,7 +37,7 @@ from unsupported_dan.interfaces.marker2D import markerLine2D, line_collection
 from unsupported_dan.interfaces.smoothing2D import *
 
 
-# In[34]:
+# In[30]:
 
 
 import numpy as np
@@ -51,16 +51,26 @@ import operator
 
 
 
+# ## Changes to base params
+
+# In[31]:
+
+
+ndp.depth *= 0.8 #800 km
+ndp.faultThickness *= 1.5 #15 km
+ndp.interfaceViscCutoffDepth *= 1.5 #150 km
+
+
 # ## Build mesh, Stokes Variables
 
-# In[60]:
+# In[32]:
 
 
 #(ndp.rightLim - ndp.leftLim)/ndp.depth
-md.res = 64
+#md.res = 64
 
 
-# In[36]:
+# In[33]:
 
 
 yres = int(md.res)
@@ -81,7 +91,7 @@ pressureField.data[:] = 0.
 
 # ## Build plate model
 
-# In[37]:
+# In[34]:
 
 
 #Set up some velocityies
@@ -101,7 +111,7 @@ dt = 0.1*ma2s/sf.time
 testTime = 5*ma2s/sf.time
 
 
-# In[38]:
+# In[35]:
 
 
 #20 Ma moddel, timestep of 200 Ka 
@@ -112,7 +122,7 @@ tg.add_plate(2)
 tg.add_plate(3)
 
 
-# In[39]:
+# In[36]:
 
 
 tg.add_left_boundary(1)
@@ -124,7 +134,7 @@ tg.add_right_boundary(3, 0.)
 
 # ## Build plate age
 
-# In[40]:
+# In[37]:
 
 
 pIdFn = tg.plate_id_fn()
@@ -138,7 +148,7 @@ fnAge_map = fn.branching.map(fn_key = pIdFn ,
 #fig.show()
 
 
-# In[41]:
+# In[38]:
 
 
 coordinate = fn.input()
@@ -146,7 +156,7 @@ depthFn = mesh.maxCoord[1] - coordinate[1]
 plateTempProxFn = ndp.potentialTemp*fn.math.erf((depthFn)/(2.*fn.math.sqrt(1.*fnAge_map)))
 
 
-# In[42]:
+# In[39]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
@@ -156,7 +166,19 @@ plateTempProxFn = ndp.potentialTemp*fn.math.erf((depthFn)/(2.*fn.math.sqrt(1.*fn
 
 # ## Make swarm and Slabs
 
-# In[43]:
+# In[40]:
+
+
+def circGradientFn(S):
+    if S == 0.:
+        return 0.
+    elif S < ndp.radiusOfCurv:
+        return max(-S/np.sqrt((ndp.radiusOfCurv**2 - S**2)), -1e3)
+    else:
+        return -1e5
+
+
+# In[41]:
 
 
 swarm = uw.swarm.Swarm(mesh=mesh, particleEscape=True)
@@ -172,7 +194,7 @@ proximityVariable.data[:] = 0.0
 signedDistanceVariable.data[:] = 0.0
 
 
-# In[44]:
+# In[42]:
 
 
 #All of these wil be needed by the slab / fault setup functions
@@ -187,22 +209,21 @@ tmUwMap = tm_uw_map([], velocityField, swarm,
 
 
 
-# In[45]:
+# In[43]:
 
 
-#define fault particle spacing, here ~5 paricles per element
-ds = (tg.maxX - tg.minX)/(5.*tg.mesh.elementRes[0])
+#define fault particle spacing, here ~2 particles per element
+ds = (tg.maxX - tg.minX)/(2.*tg.mesh.elementRes[0])
 
 fCollection = line_collection([])
 
-testThickness = 1.5*ndp.faultThickness
-testFaultDepth = 1.5*ndp.faultThickness
+
 
 
 for e in tg.undirected.edges():
     if tg.is_subduction_boundary(e):
-        build_slab_distance(tg, e, linearGradientFn, ndp.maxDepth, tmUwMap)        
-        fb = build_fault(tg, e, linearGradientFn,testThickness , ndp.maxDepth, ds, testFaultDepth, tmUwMap)
+        build_slab_distance(tg, e, circGradientFn, ndp.maxDepth, tmUwMap)        
+        fb = build_fault(tg, e, circGradientFn,ndp.faultThickness , ndp.maxDepth, ds, ndp.faultThickness, tmUwMap)
         fCollection.append(fb)
 
 #
@@ -247,7 +268,7 @@ del allys
 # In[48]:
 
 
-ridgedist = 150e3/sf.lengthScale
+ridgedist = 400e3/sf.lengthScale
 subdist = 150e3/sf.lengthScale
 
 
@@ -264,17 +285,32 @@ dummy = remove_fault_drift(fCollection, faultloc)
 dummy = pop_or_perish(tg, fCollection, faultMasterSwarm, boundMaskFn, ds)
 
 
+# In[50]:
+
+
+#A = fCollection[0].neighbourMatrix(k =4, jitter=1e-8)
+#out = shadowMask(fCollection[0])
+#out
+
+
+# In[51]:
+
+
+#test = fCollection[1]
+#np.unique(test.swarm.particleCoordinates.data[:,0]).shape, (test.swarm.particleCoordinates.data[:,0]).shape
+
+
 # ## Proximity
 # 
 # 
 
-# In[24]:
+# In[52]:
 
 
 proximityVariable.data[:] = 0
 
 
-# In[21]:
+# In[53]:
 
 
 for f in fCollection:
@@ -284,7 +320,7 @@ for f in fCollection:
 
 # ## Boundary conditions
 
-# In[23]:
+# In[54]:
 
 
 iWalls = mesh.specialSets["MinI_VertexSet"] + mesh.specialSets["MaxI_VertexSet"]
@@ -300,7 +336,7 @@ velBC  = uw.conditions.DirichletCondition( variable        = velocityField,
 
 # ## Bouyancy
 
-# In[24]:
+# In[55]:
 
 
 # Now create a buoyancy force vector using the density and the vertical unit vector. 
