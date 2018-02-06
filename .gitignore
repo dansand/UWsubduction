@@ -9,3 +9,5 @@
 /.doit.db.dir
 ./**/*.gldb
 *.gldb
+**/results/
+**/output/
