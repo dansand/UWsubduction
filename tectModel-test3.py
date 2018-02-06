@@ -59,6 +59,7 @@ import operator
 ndp.depth *= 0.8 #800 km
 ndp.faultThickness *= 1.5 #15 km
 ndp.interfaceViscCutoffDepth *= 1.5 #150 km
+md.res = 48
 
 
 # ## Build mesh, Stokes Variables
@@ -212,7 +213,7 @@ tmUwMap = tm_uw_map([], velocityField, swarm,
 # In[43]:
 
 
-#define fault particle spacing, here ~2 particles per element
+#define fault particle spacing, here ~5 paricles per element
 ds = (tg.maxX - tg.minX)/(2.*tg.mesh.elementRes[0])
 
 fCollection = line_collection([])
@@ -223,7 +224,7 @@ fCollection = line_collection([])
 for e in tg.undirected.edges():
     if tg.is_subduction_boundary(e):
         build_slab_distance(tg, e, circGradientFn, ndp.maxDepth, tmUwMap)        
-        fb = build_fault(tg, e, circGradientFn,ndp.faultThickness , ndp.maxDepth, ds, ndp.faultThickness, tmUwMap)
+        fb = build_fault(tg, e, circGradientFn, ndp.faultThickness , ndp.maxDepth, ds, ndp.faultThickness, tmUwMap)
         fCollection.append(fb)
 
 #
@@ -234,7 +235,7 @@ fnJointTemp = fn.misc.min(proxyTempVariable,plateTempProxFn)
 proxyTempVariable.data[:] = fnJointTemp.evaluate(swarm)
 
 
-# In[46]:
+# In[44]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
@@ -247,7 +248,7 @@ proxyTempVariable.data[:] = fnJointTemp.evaluate(swarm)
 
 # ##  Fault rebuild
 
-# In[47]:
+# In[45]:
 
 
 # Setup a swarm to define the replacment positions
@@ -265,7 +266,7 @@ del allxs
 del allys
 
 
-# In[48]:
+# In[46]:
 
 
 ridgedist = 400e3/sf.lengthScale
@@ -277,7 +278,7 @@ subMaskFn = tg.subduction_mask_fn(subdist)
 boundMaskFn = tg.combine_mask_fn(ridgeMaskFn , subMaskFn )
 
 
-# In[49]:
+# In[47]:
 
 
 dummy = remove_faults_from_boundaries(fCollection, ridgeMaskFn)
@@ -285,32 +286,41 @@ dummy = remove_fault_drift(fCollection, faultloc)
 dummy = pop_or_perish(tg, fCollection, faultMasterSwarm, boundMaskFn, ds)
 
 
-# In[50]:
+# In[53]:
 
 
-#A = fCollection[0].neighbourMatrix(k =4, jitter=1e-8)
-#out = shadowMask(fCollection[0])
+#A = fCollection[1].neighbourMatrix(k =4, jitter=1e-8)
+#fCollection[1].rebuild()
+#out = shadowMask(fCollection[1])
 #out
 
 
-# In[51]:
+# In[111]:
 
 
 #test = fCollection[1]
 #np.unique(test.swarm.particleCoordinates.data[:,0]).shape, (test.swarm.particleCoordinates.data[:,0]).shape
 
 
+# In[ ]:
+
+
+#print("test parallel build of Neighbour Matrix")
+#for f in fCollection:
+#    A = f.neighbourMatrix(k =4, jitter=1e-8)
+
+
 # ## Proximity
 # 
 # 
 
-# In[52]:
+# In[84]:
 
 
 proximityVariable.data[:] = 0
 
 
-# In[53]:
+# In[85]:
 
 
 for f in fCollection:
@@ -559,7 +569,7 @@ if uw.rank()==0:
 uw.barrier()
 
 
-# In[50]:
+# In[86]:
 
 
 store1 = glucifer.Store('output/subduction1')
@@ -576,10 +586,11 @@ figVisc = glucifer.Figure( store2, figsize=(960,300) )
 figVisc.append( glucifer.objects.Points(swarm, viscosityMapFn, pointSize=2, logScale=True) )
 
 
-# In[51]:
+# In[88]:
 
 
 #figProx.show()
+#figProx.save_database('test.gldb')
 
 
 # In[52]:
@@ -590,7 +601,7 @@ figVisc.append( glucifer.objects.Points(swarm, viscosityMapFn, pointSize=2, logS
 
 # ## Main Loop
 
-# In[ ]:
+# In[56]:
 
 
 time = 0.  # Initial time
@@ -598,6 +609,14 @@ step = 0
 maxSteps = 20      # Maximum timesteps (201 is recommended)
 steps_output = 5   # output every 10 timesteps
 faults_update = 2
+
+
+# In[60]:
+
+
+#step = 0
+#step % faults_update  == 0
+#step % steps_output == 0
 
 
 # In[ ]:
