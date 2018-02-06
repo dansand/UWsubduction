@@ -538,17 +538,18 @@ uw.barrier()
 # In[39]:
 
 
-store = glucifer.Store('output/subduction')
+store1 = glucifer.Store('output/subduction')
+store2 = glucifer.Store('output/subduction')
 
-figProx = glucifer.Figure(store, figsize=(960,300) )
+figProx = glucifer.Figure(store1, figsize=(960,300) )
 figProx.append( glucifer.objects.Points(swarm , proximityVariable))
 for f in fCollection:
     figProx.append( glucifer.objects.Points(f.swarm, pointSize=5))
 #figProx.show()
 
 #Plot of particles stress invariant
-#figVisc = glucifer.Figure( store, figsize=(960,300) )
-#figVisc.append( glucifer.objects.Points(swarm, viscosityMapFn, pointSize=2, logScale=True) )
+figVisc = glucifer.Figure( store2, figsize=(960,300) )
+figVisc.append( glucifer.objects.Points(swarm, viscosityMapFn, pointSize=2, logScale=True) )
 
 
 # In[40]:
@@ -565,7 +566,7 @@ for f in fCollection:
 
 # ## Main Loop
 
-# In[ ]:
+# In[42]:
 
 
 time = 0.  # Initial time
@@ -575,7 +576,7 @@ steps_output = 5   # output every 10 timesteps
 faults_update = 2
 
 
-# In[ ]:
+# In[43]:
 
 
 #while time < tg.times[-1]:
@@ -595,52 +596,11 @@ while step < maxSteps:
     # output figure to file at intervals = steps_output
     if step % steps_output == 0 or step == maxSteps-1:
         #Important to set the timestep for the store object here or will overwrite previous step
-        store.step = step
+        store1.step = step
+        store2.step = step
         figProx.save(    outputPath + "proximity"    + str(step).zfill(4))
-        #figVisc.save(    outputPath + "visc"    + str(step).zfill(4))
+        figVisc.save(    outputPath + "visc"    + str(step).zfill(4))
     
     if uw.rank()==0:
         print 'step = {0:6d}; time = {1:.3e}'.format(step,time)
-
-
-# In[111]:
-
-
-
-import glucifer
-saved = glucifer.Viewer('output/subduction')
-
-
-# In[122]:
-
-
-#saved.step = -1
-
-
-# In[125]:
-
-
-for name in store.figures():
-    saved.figure(name)
-    saved["quality"] = 2
-    saved["title"] = "Timestep ##"
-    saved.show()
-
-
-# In[124]:
-
-
-store.step
-
-
-# In[128]:
-
-
-#lv = figProx.window()
-
-
-# In[129]:
-
-
-figProx.save_database('test.gldb')
 
