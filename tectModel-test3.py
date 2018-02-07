@@ -65,6 +65,7 @@ ndp.maxDepth *= 1.5
 md.res = 48
 ndp.radiusOfCurv*=0.72  #~250 km
 md.nltol = 0.025
+md.ppc = 20
 #print(ndp.faultThickness*2900)
 
 
@@ -195,7 +196,7 @@ def circGradientFn(S):
 
 
 swarm = uw.swarm.Swarm(mesh=mesh, particleEscape=True)
-layout = uw.swarm.layouts.PerCellRandomLayout(swarm=swarm, particlesPerCell=int(20))
+layout = uw.swarm.layouts.PerCellRandomLayout(swarm=swarm, particlesPerCell=int(md.ppc))
 swarm.populate_using_layout( layout=layout ) # Now use it to populate.
 proxyTempVariable = swarm.add_variable( dataType="double", count=1 )
 proximityVariable      = swarm.add_variable( dataType="int", count=1 )
@@ -534,6 +535,14 @@ solver.print_stats()
 advector = uw.systems.SwarmAdvector( swarm=swarm, velocityField=velocityField, order=2 )
 
 
+# In[ ]:
+
+
+population_control = uw.swarm.PopulationControl(swarm, deleteThreshold=0.006, 
+                                                splitThreshold=0.25,maxDeletions=1, maxSplits=3, aggressive=True,
+                                                aggressiveThreshold=0.9, particlesPerCell=int(md.ppc))
+
+
 # ## Update functions
 
 # In[37]:
@@ -588,6 +597,8 @@ def update_faults():
 
 def update_swarm():
     
+    population_control.repopulate()
+    
     for f in fCollection:
         f.rebuild()
         f.set_proximity_director(swarm, proximityVariable, searchFac = 2., locFac=1.0)
@@ -595,6 +606,8 @@ def update_swarm():
     #A simple depth cutoff for proximity
     depthMask = swarm.particleCoordinates.data[:,1] < (1. - ndp.interfaceViscCutoffDepth)
     proximityVariable.data[depthMask] = 0
+    
+    
     
 
 

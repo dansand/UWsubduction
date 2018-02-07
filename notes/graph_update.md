@@ -1,5 +1,65 @@
 # graph Updates
 
+## Overview
+
+The aim is to provide a number of methods fot tracking the migration of plate boundaries, which can be composed to form a graph update function. For fullydyanmic models, one might have
+
+```python
+def graphUpdateFn(tectModel, time=0.0, dt = 0.0):
+    for e in tectModel.edges():
+        #boundary / ficticious edge
+        if e[0] == e[1]:
+            pass
+        #internal ridges or subdction zones
+        else:
+          newx = strainRateMinFn(maskFn)
+          tectModel.set_bound_loc(e, newx) 
+```
+
+Alternatively, if some subduction boundary velocities are provided 
+
+```python
+def graphUpdateFn(tectModel, time=0.0, dt = 0.0):
+    for e in tectModel.edges():
+        #idx_ = [tectModel.get_index_at_time(time)]
+        if tectModel.egdes(e)['vels'][idx_]:
+        #   dx = tectModel.egdes(e)['vels'][idx_] * dt
+        #   x= tectModel.get_bound_loc(e) 
+        #   tectModel.set_bound_loc(e, x + newx)
+            newx = boundVelUpdateFn(tectModel,e, time, dt)
+            tectModel.set_bound_loc(e, x) 
+        #boundary / ficticious edge
+        elif e[0] == e[1]:
+            pass
+        #internal ridges or subdction zones
+        else:
+          newx = strainRateMinFn(tectModel,e, maskFn)
+          tectModel.set_bound_loc(e, newx) 
+```
+
+
+
+## A list of udpate Functions
+
+* `boundVelUpdateFn(tectModel, e, time, dt)`
+  * where a plate boundary velocity is specified
+* `strainRateMinFn(tectModel, e, maskFn)`
+  * where no plate or boundary vels are specified
+* `subductionUpperPlateFn(tectModel, e, dt)`
+  * where an SZ upper plate vel is sepcified
+* `symmetricRidgeUpdateFn(tectModel, e)`
+  * where one or both plate Vels are specified
+
+## Additional functions 
+
+* `set_bound_loc(e, newx) `
+* `get_bound_loc(e)`
+* `get_bound_vel(e, time)`
+* `get_upper_plate_vel()`
+* `globalVelMinMix(e, dist)`
+
+
+
 *Migration of a ridge in the above type of model can be simulated simply by specifying appropriate plate velocities and a velocity of the boundary at which the plates meet which is the average of the plate velocities*
 
 Davies, 1986
