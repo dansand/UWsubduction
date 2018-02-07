@@ -602,7 +602,8 @@ def update_swarm():
     
     for f in fCollection:
         f.rebuild()
-        f.set_proximity_director(swarm, proximityVariable, searchFac = 2., locFac=1.0)
+        f.set_proximity_director(swarm, proximityVariable, searchFac = 2., locFac=1.0,
+                                maxDistanceFn=fn.misc.constant(2.))
         
     #A simple depth cutoff for proximity
     depthMask = swarm.particleCoordinates.data[:,1] < (1. - ndp.interfaceViscCutoffDepth)
