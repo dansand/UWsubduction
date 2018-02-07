@@ -64,8 +64,14 @@ ndp.interfaceViscCutoffDepth *= 1.5 #150 km
 ndp.maxDepth *= 1.5
 md.res = 48
 ndp.radiusOfCurv*=0.72  #~250 km
-
+md.nltol = 0.025
 #print(ndp.faultThickness*2900)
+
+
+# In[99]:
+
+
+#md.nltol
 
 
 # ## Build mesh, Stokes Variables
@@ -203,16 +209,22 @@ signedDistanceVariable.data[:] = 0.0
 
 # ## test
 
-# In[61]:
+# In[97]:
 
 
-print("Starting Test")
+#print("Starting Test")
 #uw.barrier()
 
 #testXs = np.arange(-0.2, 0.2, 0.02)
 #testYs = 0.999*np.ones(len(testXs))
 #slabLine = markerLine2D(mesh, velocityField, testXs ,testYs ,
 #                            0.2, 88, insidePt=(0., 0.8))
+
+
+#slabLine = markerLine2D(mesh, velocityField, [], [] ,
+#                            0.2, 88, insidePt=(0., 0.8))
+
+#slabLine.swarm.particleCoordinates.data.shape, slabLine.data.shape, slabLine.kdtree.data.shape
 
 
 # ## Finish test
@@ -223,7 +235,7 @@ print("Starting Test")
 #All of these wil be needed by the slab / fault setup functions
 #We have two main options, bind them to the TectModel class. 
 #or provide them to the functions
-#collection them in a dictionary may be a useful way too proviede them to the fucntiosn 
+#collection them in a dictionary may be a useful way too proviede them to the function 
 #wthout blowing out the function arguments
 
 tmUwMap = tm_uw_map([], velocityField, swarm, 
@@ -567,7 +579,7 @@ def update_faults():
         #Here we're grabbing a 'black box' routine , 
         #which is supposed to maintain particle density and smooth
         #quite experimental!!!
-        repair_markerLines(f, ds)
+        repair_markerLines(f, ds, k=8)
     
 
 
