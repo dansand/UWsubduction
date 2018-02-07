@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[43]:
+# In[1]:
 
 
 #load in parent stuff
@@ -10,7 +10,7 @@ import nb_load_stuff
 from tectModelClass import *
 
 
-# In[44]:
+# In[2]:
 
 
 #If run through Docker we'll point at the local 'unsupported dir.'
@@ -28,7 +28,7 @@ except:
     pass
 
 
-# In[45]:
+# In[3]:
 
 
 from unsupported_dan.UWsubduction.base_params import *
@@ -37,7 +37,7 @@ from unsupported_dan.interfaces.marker2D import markerLine2D, line_collection
 from unsupported_dan.interfaces.smoothing2D import *
 
 
-# In[46]:
+# In[4]:
 
 
 import numpy as np
@@ -53,7 +53,7 @@ import operator
 
 # ## Changes to base params
 
-# In[89]:
+# In[5]:
 
 
 #These will keep changing if the notebook is run again without restarting!
@@ -67,12 +67,13 @@ ndp.radiusOfCurv*=0.72  #~250 km
 md.nltol = 0.025
 md.ppc = 20
 #print(ndp.faultThickness*2900)
+ndp.yieldStressMax *=0.5  #150 Mpa
 
 
-# In[99]:
+# In[9]:
 
 
-#md.nltol
+
 
 
 # ## Build mesh, Stokes Variables

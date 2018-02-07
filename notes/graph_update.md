@@ -52,6 +52,10 @@ def graphUpdateFn(tectModel, time=0.0, dt = 0.0):
 
 ## Additional functions 
 
+* `is_ridge()`
+* `is_self_loop()`
+
+
 * `set_bound_loc(e, newx) `
 * `get_bound_loc(e)`
 * `get_bound_vel(e, time)`
