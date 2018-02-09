@@ -49,6 +49,8 @@ def graphUpdateFn(tectModel, time=0.0, dt = 0.0):
   * where an SZ upper plate vel is sepcified
 * `symmetricRidgeUpdateFn(tectModel, e)`
   * where one or both plate Vels are specified
+* `boundary_ridge_migration(tectModel,e )`:
+  * boundary ridges can be made to follow their plate (they are defined by a plate ID. )
 
 ## Additional functions 
 
@@ -61,6 +63,16 @@ def graphUpdateFn(tectModel, time=0.0, dt = 0.0):
 * `get_bound_vel(e, time)`
 * `get_upper_plate_vel()`
 * `globalVelMinMix(e, dist)`
+
+
+
+## Mask functions
+
+* `plate_boundary_mask_fn`
+* `ridge_mask_fn`
+* `subduction_mask_fn`
+* `combine_mask_fn`
+* `interior_plate_mask_function(self, lambda, minPlateLength)`
 
 
 
