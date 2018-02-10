@@ -84,6 +84,28 @@ this implies symmetric spreading.
 
 
 
+There are at least 4 cases where I want to mask the plates /ridges
+
+- for velocity boundary condtions
+
+  - these are likely to be symmetric, but may have a dependence on plate size
+
+- for fault location
+
+  - these should have a dependence on plate size, and may not be symmetric
+
+- for plate velocity evaluation - i.e. intenal plate vel. average / max / min
+
+  - these are likely to be symmetric, but may have a dependence on plate size
+
+- for strain rate evaluation, both for finding exiting bounary locations. and finding new plate boundaries
+
+  - these are likely to be symmetric, but may have a dependence on plate size
+
+  ​
+
+
+
 ​		
 ​	
 

@@ -1,13 +1,13 @@
 
 # coding: utf-8
 
-# In[115]:
+# In[1]:
 
 
 # 
 
 
-# In[1]:
+# In[2]:
 
 
 #load in parent stuff
@@ -16,7 +16,7 @@ import nb_load_stuff
 from tectModelClass import *
 
 
-# In[2]:
+# In[3]:
 
 
 #If run through Docker we'll point at the local 'unsupported dir.'
@@ -34,7 +34,7 @@ except:
     pass
 
 
-# In[3]:
+# In[4]:
 
 
 from unsupported_dan.UWsubduction.base_params import *
@@ -43,7 +43,7 @@ from unsupported_dan.interfaces.marker2D import markerLine2D, line_collection
 from unsupported_dan.interfaces.smoothing2D import *
 
 
-# In[4]:
+# In[5]:
 
 
 import numpy as np
@@ -59,7 +59,7 @@ import operator
 
 # ## Changes to base params
 
-# In[5]:
+# In[6]:
 
 
 #These will keep changing if the notebook is run again without restarting!
@@ -78,14 +78,14 @@ ndp.yieldStressMax *=0.5  #150 Mpa
 
 # ## Build mesh, Stokes Variables
 
-# In[6]:
+# In[7]:
 
 
 #(ndp.rightLim - ndp.leftLim)/ndp.depth
 #md.res = 64
 
 
-# In[7]:
+# In[8]:
 
 
 yres = int(md.res)
@@ -106,7 +106,7 @@ pressureField.data[:] = 0.
 
 # ## Build plate model
 
-# In[8]:
+# In[9]:
 
 
 #Set up some velocityies
@@ -126,7 +126,7 @@ dt = 0.1*ma2s/sf.time
 testTime = 5*ma2s/sf.time
 
 
-# In[9]:
+# In[10]:
 
 
 #20 Ma moddel, timestep of 200 Ka 
@@ -137,7 +137,7 @@ tg.add_plate(2)
 tg.add_plate(3)
 
 
-# In[10]:
+# In[11]:
 
 
 tg.add_left_boundary(1)
@@ -149,7 +149,7 @@ tg.add_right_boundary(3, 0.)
 
 # ## Build plate age
 
-# In[116]:
+# In[12]:
 
 
 pIdFn = tg.plate_id_fn()
@@ -163,7 +163,7 @@ fnAge_map = fn.branching.map(fn_key = pIdFn ,
 #fig.show()
 
 
-# In[12]:
+# In[13]:
 
 
 coordinate = fn.input()
@@ -171,7 +171,7 @@ depthFn = mesh.maxCoord[1] - coordinate[1]
 plateTempProxFn = ndp.potentialTemp*fn.math.erf((depthFn)/(2.*fn.math.sqrt(1.*fnAge_map)))
 
 
-# In[13]:
+# In[14]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
@@ -181,7 +181,7 @@ plateTempProxFn = ndp.potentialTemp*fn.math.erf((depthFn)/(2.*fn.math.sqrt(1.*fn
 
 # ## Make swarm and Slabs
 
-# In[14]:
+# In[15]:
 
 
 def circGradientFn(S):
@@ -193,7 +193,7 @@ def circGradientFn(S):
         return -1e5
 
 
-# In[15]:
+# In[16]:
 
 
 swarm = uw.swarm.Swarm(mesh=mesh, particleEscape=True)
@@ -209,7 +209,7 @@ proximityVariable.data[:] = 0.0
 signedDistanceVariable.data[:] = 0.0
 
 
-# In[16]:
+# In[17]:
 
 
 #All of these wil be needed by the slab / fault setup functions
@@ -224,7 +224,7 @@ tmUwMap = tm_uw_map([], velocityField, swarm,
 
 
 
-# In[17]:
+# In[18]:
 
 
 #define fault particle spacing, here ~5 paricles per element
@@ -249,7 +249,7 @@ fnJointTemp = fn.misc.min(proxyTempVariable,plateTempProxFn)
 proxyTempVariable.data[:] = fnJointTemp.evaluate(swarm)
 
 
-# In[18]:
+# In[19]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
@@ -262,7 +262,7 @@ proxyTempVariable.data[:] = fnJointTemp.evaluate(swarm)
 
 # ##  Fault rebuild
 
-# In[19]:
+# In[20]:
 
 
 # Setup a swarm to define the replacment positions
@@ -280,7 +280,7 @@ del allxs
 del allys
 
 
-# In[20]:
+# In[21]:
 
 
 ridgedist = 400e3/sf.lengthScale
@@ -292,7 +292,7 @@ subMaskFn = tg.subduction_mask_fn(subdist)
 boundMaskFn = tg.combine_mask_fn(ridgeMaskFn , subMaskFn )
 
 
-# In[21]:
+# In[22]:
 
 
 dummy = remove_faults_from_boundaries(fCollection, ridgeMaskFn)
@@ -304,13 +304,13 @@ dummy = pop_or_perish(tg, fCollection, faultMasterSwarm, boundMaskFn, ds)
 # 
 # 
 
-# In[22]:
+# In[23]:
 
 
 proximityVariable.data[:] = 0
 
 
-# In[23]:
+# In[24]:
 
 
 for f in fCollection:
@@ -320,7 +320,7 @@ for f in fCollection:
 
 # ## Boundary conditions
 
-# In[24]:
+# In[25]:
 
 
 iWalls = mesh.specialSets["MinI_VertexSet"] + mesh.specialSets["MaxI_VertexSet"]
@@ -336,7 +336,7 @@ velBC  = uw.conditions.DirichletCondition( variable        = velocityField,
 
 # ## Bouyancy
 
-# In[25]:
+# In[26]:
 
 
 # Now create a buoyancy force vector using the density and the vertical unit vector. 
@@ -349,7 +349,7 @@ buoyancyMapFn = thermalDensityFn*gravity
 
 # ## Rheology
 
-# In[26]:
+# In[27]:
 
 
 symStrainrate = fn.tensor.symmetric( 
@@ -366,7 +366,7 @@ def safe_visc(func, viscmin=ndp.viscosityMin, viscmax=ndp.viscosityMax):
     return fn.misc.max(viscmin, fn.misc.min(viscmax, func))
 
 
-# In[27]:
+# In[28]:
 
 
 temperatureFn = proxyTempVariable
@@ -400,7 +400,7 @@ mantleRheologyFn = safe_visc(fn.misc.min(mantleCreep, yielding), viscmin=ndp.vis
 interfaceViscosityFn = fn.misc.constant(0.5)
 
 
-# In[28]:
+# In[29]:
 
 
 #viscconds = ((proximityVariable == 0, mantleRheologyFn),
@@ -418,7 +418,7 @@ viscosityMapFn = fn.branching.map( fn_key = proximityVariable,
 
 # ## Stokes
 
-# In[29]:
+# In[30]:
 
 
 surfaceArea = uw.utils.Integral(fn=1.0,mesh=mesh, integrationType='surface', surfaceIndexSet=tWalls)
@@ -445,7 +445,7 @@ def pressure_calibrate():
     smooth_pressure(mesh)
 
 
-# In[30]:
+# In[31]:
 
 
 stokes = uw.systems.Stokes( velocityField  = velocityField, 
@@ -455,7 +455,7 @@ stokes = uw.systems.Stokes( velocityField  = velocityField,
                                    fn_bodyforce   = buoyancyMapFn )
 
 
-# In[31]:
+# In[ ]:
 
 
 solver = uw.systems.Solver(stokes)
@@ -466,22 +466,58 @@ solver.set_penalty(1.0e7)
 solver.options.scr.ksp_rtol = 1.0e-4
 
 
-# In[32]:
+# In[ ]:
 
 
 solver.solve(nonLinearIterate=True, nonLinearTolerance=md.nltol, callback_post_solve = pressure_calibrate)
 solver.print_stats()
 
 
+# ## Test
+
+# In[45]:
+
+
+fault = markerLine2D(tg.mesh, tmUwMap.velField, [], [],
+                           0.01, 7, insidePt=(0.0, 0.8))
+
+f = fCollection[0]
+iDs = pIdFn.evaluate(faultMasterSwarm)
+mask1 = np.where(iDs == 7)[0]   #not a problem with empty array returned by 
+mask1 = [1,2]
+
+plateParticles = faultMasterSwarm.particleCoordinates.data[mask1,:] #not a problem with empty array returned by 
+#mask3 = (f.kdtree.query(plateParticles)[0] > ds)
+
+
+# In[46]:
+
+
+plateParticles.shape[0] 
+
+
+# In[47]:
+
+
+if plateParticles.shape[0] > 0:
+    mask3 = (f.kdtree.query(plateParticles)[0] > ds)
+
+
+# In[49]:
+
+
+faultMasterSwarm[1,2][maks3]
+
+
 # ## Swarm Advector
 
-# In[33]:
+# In[ ]:
 
 
 advector = uw.systems.SwarmAdvector( swarm=swarm, velocityField=velocityField, order=2 )
 
 
-# In[34]:
+# In[ ]:
 
 
 population_control = uw.swarm.PopulationControl(swarm, deleteThreshold=0.006, 
@@ -506,7 +542,7 @@ def advect_update():
         f.advection(dt)
     
     
-    return time+dt, step+1
+    return dt, time+dt, step+1
 
 
 # In[36]:
@@ -603,8 +639,9 @@ def rebuild_mask_fns():
     ridgeMaskFn = tg.ridge_mask_fn(ridgedist)
     subMaskFn = tg.subduction_mask_fn(subdist)
     boundMaskFn = tg.combine_mask_fn(ridgeMaskFn , subMaskFn )
+    pIdFn = tg.plate_id_fn() #just here for Viz
     
-    return ridgeMaskFn, subMaskFn, boundMaskFn
+    return ridgeMaskFn, subMaskFn, boundMaskFn, pIdFn
                 
                 
 
@@ -697,11 +734,13 @@ if uw.rank()==0:
 uw.barrier()
 
 
-# In[82]:
+# In[57]:
 
 
 store1 = glucifer.Store('output/subduction1')
 store2 = glucifer.Store('output/subduction2')
+store3 = glucifer.Store('output/subduction3')
+
 
 figProx = glucifer.Figure(store1, figsize=(960,300) )
 figProx.append( glucifer.objects.Points(swarm , proximityVariable))
@@ -709,15 +748,21 @@ for f in fCollection:
     figProx.append( glucifer.objects.Points(f.swarm, pointSize=5))
 #figProx.show()
 
-#Plot of particles stress invariant
 figVisc = glucifer.Figure( store2, figsize=(960,300) )
 figVisc.append( glucifer.objects.Points(swarm, viscosityMapFn, pointSize=2, logScale=True) )
 
 
-# In[43]:
+
+figMask = glucifer.Figure( store3, figsize=(960,300) )
+figMask.append( glucifer.objects.Surface(mesh, pIdFn , valueRange=[0,3]) )
+figMask.append( glucifer.objects.Surface(mesh,  boundMaskFn) )
 
 
-#figProx.show()
+
+# In[59]:
+
+
+#figMask.show()
 #figProx.save_database('test.gldb')
 
 
@@ -752,8 +797,8 @@ while step < maxSteps:
     solver.solve(nonLinearIterate=True)
     
     #advect swarm and faults
-    time,step =  advect_update()
-    dt_model += time
+    dt, time, step =  advect_update()
+    dt_model += dt
     
     
     #running fault healing/addition, map back to swarm
@@ -763,9 +808,9 @@ while step < maxSteps:
         
     #update tectonic model
     if step % steps_update_model == 0:
-        update_tect_model(tg, tmUwMap, dt = 0.0)
+        update_tect_model(tg, tmUwMap, dt = dt_model)
         dt_model = 0.
-        ridgeMaskFn, subMaskFn, boundMaskFn = rebuild_mask_fns()
+        ridgeMaskFn, subMaskFn, boundMaskFn, pIdFn= rebuild_mask_fns()
         
         valuesUpdateFn()
         
