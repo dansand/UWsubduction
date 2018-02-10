@@ -658,6 +658,12 @@ def rebuild_mask_fns():
 #update_tect_model(tg, tmUwMap,dttest)
 
 
+# In[60]:
+
+
+#f.data.shape
+
+
 # In[40]:
 
 
