@@ -72,8 +72,8 @@ ndp.depth *= 0.8 #800 km
 ndp.faultThickness *= 1.5 #15 km
 ndp.interfaceViscCutoffDepth *= 1.5 #150 km
 ndp.maxDepth *= 1.5
-md.res = 64
-ndp.radiusOfCurv*=0.72  #~250 km
+md.res = 48
+#ndp.radiusOfCurv*=0.72  #~250 km
 md.nltol = 0.025
 md.ppc = 25
 #print(ndp.faultThickness*2900)
@@ -146,7 +146,7 @@ testTime = 5*ma2s/sf.time
 #20 Ma moddel, timestep of 200 Ka 
 tg = TectModel(mesh, 0, endTime, dt)
 
-#tg.add_plate(1, velocities=vp1)
+tg.add_plate(1, velocities=vp1)
 tg.add_plate(2, velocities=vp2)
 tg.add_plate(3, velocities=vp3)
 
@@ -154,10 +154,10 @@ tg.add_plate(3, velocities=vp3)
 # In[12]:
 
 
-#tg.add_left_boundary(1, plateInitAge=ndp.slabMaxAge/3., velocities=False)
-tg.add_left_boundary(2, plateInitAge=0., velocities=False)
+tg.add_left_boundary(1, plateInitAge=ndp.slabMaxAge/3., velocities=False)
+#tg.add_left_boundary(2, plateInitAge=0., velocities=False)
 
-#tg.add_ridge(1,2, -0.6, velocities=vb12)
+tg.add_ridge(1,2, -0.6, velocities=vb12)
 tg.add_subzone(2, 3, 0.2, subInitAge=ndp.slabMaxAge, upperInitAge=ndp.opMaxAge)
 
 tg.add_right_boundary(3, plateInitAge=0.0, velocities=False)
@@ -179,15 +179,23 @@ fnAge_map = fn.branching.map(fn_key = pIdFn ,
 #fig.show()
 
 
-# In[14]:
+# In[31]:
 
 
 coordinate = fn.input()
 depthFn = mesh.maxCoord[1] - coordinate[1]
-plateTempProxFn = ndp.potentialTemp*fn.math.erf((depthFn)/(2.*fn.math.sqrt(1.*fnAge_map)))
+
+platethickness = 2.32*fn.math.sqrt(1.*fnAge_map )  
+
+halfSpaceTemp = ndp.potentialTemp*fn.math.erf((depthFn)/(2.*fn.math.sqrt(1.*fnAge_map)))
+
+plateTempProxFn = fn.branching.conditional( ((depthFn > platethickness, ndp.potentialTemp ), 
+                                           (True,                      halfSpaceTemp)  ))
 
 
-# In[15]:
+
+
+# In[24]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
@@ -197,7 +205,7 @@ plateTempProxFn = ndp.potentialTemp*fn.math.erf((depthFn)/(2.*fn.math.sqrt(1.*fn
 
 # ## Make swarm and Slabs
 
-# In[16]:
+# In[25]:
 
 
 def circGradientFn(S):
@@ -207,9 +215,13 @@ def circGradientFn(S):
         return max(-S/np.sqrt((ndp.radiusOfCurv**2 - S**2)), -1e3)
     else:
         return -1e5
+    
+    
+def linearGradientFn(S):
+    return np.tan(np.deg2rad(-25.))
 
 
-# In[17]:
+# In[26]:
 
 
 swarm = uw.swarm.Swarm(mesh=mesh, particleEscape=True)
@@ -225,7 +237,7 @@ proximityVariable.data[:] = 0.0
 signedDistanceVariable.data[:] = 0.0
 
 
-# In[18]:
+# In[27]:
 
 
 #All of these wil be needed by the slab / fault setup functions
@@ -240,7 +252,7 @@ tmUwMap = tm_uw_map([], velocityField, swarm,
 
 
 
-# In[19]:
+# In[28]:
 
 
 #define fault particle spacing, here ~5 paricles per element
@@ -265,13 +277,11 @@ fnJointTemp = fn.misc.min(proxyTempVariable,plateTempProxFn)
 proxyTempVariable.data[:] = fnJointTemp.evaluate(swarm)
 
 
-# In[20]:
+# In[30]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
 #fig.append( glucifer.objects.Points(swarm, proxyTempVariable))
-    
-
 #fig.show()
 #fig.save_database('test.gldb')
 
@@ -298,7 +308,7 @@ del allys
 
 # The combination of surface kinematic boundary conditions and faults requires more specialised mask functions. 
 
-# In[24]:
+# In[44]:
 
 
 #this one will repopulating (overpopulate) the faults
@@ -306,15 +316,12 @@ boundMaskFn = tg.plate_interior_mask_fn(relativeWidth=0.75,
                                         minPlateLength=10e3/sf.lengthScale, invert=False)
 
 #this one will truncate the faults
-#ridgeMaskFn = tg.variable_boundary_mask_fn(distMax=100., distMin=0.0, relativeWidth = 0.85, 
-#                                  minPlateLength =50e3/sf.lengthScale,  
-#                                           out = 'bool', boundtypes='ridge', bound=(1,2))
-
-
-#this one will truncate the faults
 ridgeMaskFn = tg.variable_boundary_mask_fn(distMax=100., distMin=0.0, relativeWidth = 0.85, 
                                   minPlateLength =50e3/sf.lengthScale,  
-                                           out = 'bool', boundtypes='ridge', bound=(2,2))
+                                           out = 'bool', boundtypes='ridge', bound=(1,2))
+
+
+
 
 
 ###The following mask function provide a way of building velocity conditions within the plates,
@@ -335,18 +342,18 @@ dummy = pop_or_perish(tg, fCollection, faultMasterSwarm, boundMaskFn, ds)
 dummy = remove_faults_from_boundaries(fCollection, ridgeMaskFn)
 
 
-# In[33]:
+# In[46]:
 
 
-fig = glucifer.Figure(figsize=(400, 200))
+#fig = glucifer.Figure(figsize=(400, 200))
 #fig.append( glucifer.objects.Surface(tg.mesh, pIdFn, valueRange=[0,3]))
-fig.append( glucifer.objects.Surface(tg.mesh, velMaskFn))
-#fig.append( glucifer.objects.Surface(tg.mesh, testFn))
+#fig.append( glucifer.objects.Surface(tg.mesh, velMaskFn))
+#fig.append( glucifer.objects.Surface(tg.mesh, ridgeMaskFn))
 
 
 #for f in fCollection:
 #    fig.append( glucifer.objects.Points(f.swarm, pointSize=5))
-fig.show()
+#fig.show()
 
 #fig.save_database('test.gldb')
 
@@ -476,7 +483,7 @@ def build_velBcs(nodes):
     
     
     velBC  = uw.conditions.DirichletCondition( variable        = velocityField, 
-                                           indexSetsPerDof = (iWalls + velnodeset, jWalls - velnodeset) )
+                                           indexSetsPerDof = (iWalls + velnodeset, jWalls) )
     
     return velBC
 
@@ -667,23 +674,24 @@ def advect_update():
     return dt, time+dt, step+1
 
 
+# In[48]:
+
+
+#velocityField.data[:] = 0.
+#pressureField.data[:] = 0.
+
+
 # In[47]:
 
 
 def update_stokes(time):
     
-    #rebuild the velocity mask Fn
-    
-    velMask1 = tg.variable_boundary_mask_fn(distMax=20.2, distMin=0.0, relativeWidth = 0.75, 
-                            minPlateLength =50e3/sf.lengthScale,  out = 'bool', boundtypes='ridge')
 
-    velMask2= tg.plate_interior_mask_fn(relativeWidth=0.95, 
-                                            minPlateLength=10e3/sf.lengthScale, invert=False)
 
-    velMaskFn = operator.and_( velMask1,  velMask2)
     
-    #set velocity back to zero
-    velocityField.data[:] = 0.
+    #set velocity / pressure back to zero
+    #velocityField.data[:] = 0.
+    #pressureField.data[:] = 0.
     
     #set the new surface vel, get the velXNodes
     vXnodes = set_vel_return_nodes(time, velMaskFn)
@@ -795,7 +803,7 @@ def save_files(step):
 #save_files(0)
 
 
-# In[51]:
+# In[38]:
 
 
 #e = (3,3)
@@ -804,7 +812,7 @@ def save_files(step):
 #    print(tg.bound_has_vel(e, time))
 
 
-# In[63]:
+# In[40]:
 
 
 def set_boundary_vel_update(tectModel, platePair, time, dt):
@@ -862,21 +870,29 @@ def rebuild_mask_fns():
                                             minPlateLength=10e3/sf.lengthScale, invert=False)
 
     #this one will truncate the faults
-    #ridgeMaskFn = tg.variable_boundary_mask_fn(distMax=100., distMin=0.0, relativeWidth = 0.75, 
-    #                                  minPlateLength =50e3/sf.lengthScale,  
-    #                                           out = 'bool', boundtypes='ridge', bound=(1,2))
-     
     ridgeMaskFn = tg.variable_boundary_mask_fn(distMax=100., distMin=0.0, relativeWidth = 0.75, 
                                       minPlateLength =50e3/sf.lengthScale,  
-                                               out = 'bool', boundtypes='ridge', bound=(2,2))
+                                               out = 'bool', boundtypes='ridge', bound=(1,2))
+     
+
+    
+    #this one is intended as a the velocity mask function
+    velMask1 = tg.variable_boundary_mask_fn(distMax=20.2, distMin=0.0, relativeWidth = 0.85, 
+                            minPlateLength =50e3/sf.lengthScale,  out = 'bool', boundtypes='ridge')
+
+    #this one will repopulating (overpopulate) the faults
+    velMask2= tg.plate_interior_mask_fn(relativeWidth=0.95, 
+                                            minPlateLength=10e3/sf.lengthScale, invert=False)
+
+    velMaskFn = operator.and_( velMask1,  velMask2)
        
-    return ridgeMaskFn, boundMaskFn
+    return ridgeMaskFn, boundMaskFn, velMaskFn
 
 
-# In[64]:
+# In[42]:
 
 
-#ridgeMaskFn, subMaskFn, boundMaskFn = rebuild_mask_fns()
+#ridgeMaskFn, boundMaskFn, velMaskFn = rebuild_mask_fns()
 
 
 # In[65]:
@@ -975,12 +991,19 @@ if uw.rank()==0:
 uw.barrier()
 
 
+# In[36]:
+
+
+maskFnVar = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
+maskFnVar.data[:] = velMaskFn.evaluate(mesh)
+
+
 # In[93]:
 
 
 store1 = glucifer.Store('output/subduction1')
 store2 = glucifer.Store('output/subduction2')
-#store3 = glucifer.Store('output/subduction3')
+store3 = glucifer.Store('output/subduction3')
 
 
 figProx = glucifer.Figure(store1, figsize=(960,300) )
@@ -994,13 +1017,13 @@ figVisc.append( glucifer.objects.Points(swarm, viscosityMapFn, pointSize=2, logS
 
 
 
-#figMask = glucifer.Figure( store3, figsize=(960,300) )
+figMask = glucifer.Figure( store3, figsize=(960,300) )
 #figMask.append( glucifer.objects.Surface(mesh, pIdFn , valueRange=[0,3]) )
-#figMask.append( glucifer.objects.Surface(mesh,  boundMaskFn) )
+figMask.append( glucifer.objects.Surface(mesh,  maskFnVar) )
 
 
 
-# In[94]:
+# In[37]:
 
 
 #figVisc.show()
@@ -1025,7 +1048,7 @@ steps_output = 5   # output every 10 timesteps
 swarm_update = 5   # output every 10 timesteps
 faults_update = 10
 dt_model = 0.
-steps_update_model = 10
+steps_update_model = 2
 
 valuesUpdateFn()
 
@@ -1055,7 +1078,10 @@ while step < maxSteps:
         dt_model = 0.
         #ridgeMaskFn, subMaskFn, boundMaskFn, pIdFn= rebuild_mask_fns()
         
-        ridgeMaskFn, boundMaskFn = rebuild_mask_fns()
+        ridgeMaskFn, boundMaskFn, velMaskFn = rebuild_mask_fns()
+        #also update this guy for viz
+        maskFnVar.data[:] = velMaskFn.evaluate(mesh)
+        
         valuesUpdateFn()
         
     #rebuild stokes
@@ -1074,7 +1100,7 @@ while step < maxSteps:
         #store3.step = step
         figProx.save(    outputPath + "proximity"    + str(step).zfill(4))
         figVisc.save(    outputPath + "visc"    + str(step).zfill(4))
-        #figMask.save(    outputPath + "mask"    + str(step).zfill(4))
+        figMask.save(    outputPath + "mask"    + str(step).zfill(4))
         
         #save out the surface velocity
         save_files(step)
