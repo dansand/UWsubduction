@@ -994,8 +994,18 @@ uw.barrier()
 # In[36]:
 
 
-maskFnVar = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
-maskFnVar.data[:] = velMaskFn.evaluate(mesh)
+ridgeMaskFn, boundMaskFn, velMaskFn
+
+maskFnVar1 = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
+maskFnVar1.data[:] = ridgeMaskFn.evaluate(mesh)
+
+
+maskFnVar2 = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
+maskFnVar2.data[:] = boundMaskFn.evaluate(mesh)
+
+
+maskFnVar3 = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
+maskFnVar3.data[:] = velMaskFn.evaluate(mesh)
 
 
 # In[93]:
@@ -1019,7 +1029,9 @@ figVisc.append( glucifer.objects.Points(swarm, viscosityMapFn, pointSize=2, logS
 
 figMask = glucifer.Figure( store3, figsize=(960,300) )
 #figMask.append( glucifer.objects.Surface(mesh, pIdFn , valueRange=[0,3]) )
-figMask.append( glucifer.objects.Surface(mesh,  maskFnVar) )
+figMask.append( glucifer.objects.Surface(mesh,  maskFnVar1) )
+figMask.append( glucifer.objects.Surface(mesh,  maskFnVar2) )
+figMask.append( glucifer.objects.Surface(mesh,  maskFnVar3) )
 
 
 
@@ -1080,7 +1092,9 @@ while step < maxSteps:
         
         ridgeMaskFn, boundMaskFn, velMaskFn = rebuild_mask_fns()
         #also update this guy for viz
-        maskFnVar.data[:] = velMaskFn.evaluate(mesh)
+        maskFnVar1.data[:] = ridgeMaskFn.evaluate(mesh)
+        maskFnVar2.data[:] = boundMaskFn.evaluate(mesh)
+        maskFnVar3.data[:] = velMaskFn.evaluate(mesh)
         
         valuesUpdateFn()
         
@@ -1097,7 +1111,7 @@ while step < maxSteps:
         #Important to set the timestep for the store object here or will overwrite previous step
         store1.step = step
         store2.step = step
-        #store3.step = step
+        store3.step = step
         figProx.save(    outputPath + "proximity"    + str(step).zfill(4))
         figVisc.save(    outputPath + "visc"    + str(step).zfill(4))
         figMask.save(    outputPath + "mask"    + str(step).zfill(4))
