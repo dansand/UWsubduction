@@ -355,26 +355,21 @@ del allys
 # In[24]:
 
 
-#this one will repopulating (overpopulate) the faults
-#faultFn1 = tg.plate_interior_mask_fn(relativeWidth=0.99, 
-#                                        minPlateLength=120e3/sf.lengthScale, plate=2)
-
 #this one will truncate the faults
-faultRmfn = tg.t2f(tg.variable_boundary_mask_fn(distMax=200., distMin=150e3/sf.lengthScale, relativeWidth = 0., 
-                                  minPlateLength =120e3/sf.lengthScale,  
+faultRmfn = tg.t2f(tg.variable_boundary_mask_fn(distMax=150e3/sf.lengthScale, distMin=10e3/sf.lengthScale, relativeWidth = 0.85, 
+                                  minPlateLength =60e3/sf.lengthScale,  
                                            out = 'bool', boundtypes='sub' ))
 
 
 #this one will put particles back into the fault
-faultAddFn1 = tg.variable_boundary_mask_fn(distMax=200., distMin=250e3/sf.lengthScale, relativeWidth = 0., 
-                                  minPlateLength =120e3/sf.lengthScale,  
+faultAddFn1 = tg.variable_boundary_mask_fn(distMax=300e3/sf.lengthScale, distMin=10e3/sf.lengthScale, 
+                                       relativeWidth = 0.95, minPlateLength =60e3/sf.lengthScale,  
                                            out = 'bool', boundtypes='sub' )
 
-
-
-faultAddFn2 =  tg.t2f(tg.plate_boundary_mask_fn(dist = 100e3/sf.lengthScale))
+faultAddFn2 =  tg.t2f(tg.plate_boundary_mask_fn(dist = 50e3/sf.lengthScale))
 
 faultAddFn = operator.and_( faultAddFn1 ,  faultAddFn2)
+
 
 
 
@@ -396,47 +391,17 @@ dummy = pop_or_perish(tg, fCollection, faultMasterSwarm, faultAddFn , ds)
 dummy = remove_faults_from_boundaries(tg, fCollection, faultRmfn )
 
 
-# In[25]:
-
-
-#fig = glucifer.Figure(figsize=(400, 200))
-#fig.append( glucifer.objects.Surface(tg.mesh, pIdFn, valueRange=[0,3]))
-#fig.append( glucifer.objects.Surface(tg.mesh, velMaskFn))
-#fig.append( glucifer.objects.Surface(tg.mesh, faultAddFn ) )
-
-
-#for f in fCollection:
-#    fig.append( glucifer.objects.Points(f.swarm, pointSize=5))
-#fig.show()
-
-#fig.save_database('test.gldb')
-
-
-# In[26]:
-
-
-#testFn = tg.t2f(boundMaskFn1)
-
-#testFn = tg.f2b( tg.b2f(boundMaskFn1))
-
-
-# In[27]:
-
-
-#testFn.evaluate(mesh)
-
-
 # ## Proximity
 # 
 # 
 
-# In[28]:
+# In[25]:
 
 
 proximityVariable.data[:] = 0
 
 
-# In[29]:
+# In[26]:
 
 
 for f in fCollection:
@@ -458,7 +423,7 @@ for f in fCollection:
 
 # ## Prescribed velocity
 
-# In[30]:
+# In[28]:
 
 
 def set_vel_return_nodes(time, maskFn):
@@ -483,7 +448,7 @@ def set_vel_return_nodes(time, maskFn):
     
 
 
-# In[31]:
+# In[29]:
 
 
 vXnodes = set_vel_return_nodes(0., velMaskFn)
@@ -794,9 +759,6 @@ def update_faults():
     #boundMaskFn = tg.combine_mask_fn(ridgeMaskFn , subMaskFn )
     
     
-    #dummy = remove_faults_from_boundaries(fCollection, ridgeMaskFn)
-    #dummy = remove_fault_drift(fCollection, faultloc, tolFac =ds*2)
-    #dummy = pop_or_perish(tg, fCollection, faultMasterSwarm, boundMaskFn, ds*3)
     
     #order is very important here
     dummy = remove_fault_drift(fCollection, faultloc)
@@ -933,27 +895,20 @@ def update_tect_model(tectModel, tmUwMap, time, dt = 0.0 ):
 
 def rebuild_mask_fns():
 
-    #this one will repopulating (overpopulate) the faults
-    #faultFn1 = tg.plate_interior_mask_fn(relativeWidth=0.99, 
-    #                                        minPlateLength=120e3/sf.lengthScale, plate=2)
-
     #this one will truncate the faults
-    faultRmfn = tg.t2f(tg.variable_boundary_mask_fn(distMax=200., distMin=150e3/sf.lengthScale, relativeWidth = 0., 
-                                      minPlateLength =120e3/sf.lengthScale,  
+    faultRmfn = tg.t2f(tg.variable_boundary_mask_fn(distMax=150e3/sf.lengthScale, distMin=10e3/sf.lengthScale, relativeWidth = 0.85, 
+                                      minPlateLength =60e3/sf.lengthScale,  
                                                out = 'bool', boundtypes='sub' ))
 
 
     #this one will put particles back into the fault
-    faultAddFn1 = tg.variable_boundary_mask_fn(distMax=200., distMin=250e3/sf.lengthScale, relativeWidth = 0., 
-                                      minPlateLength =120e3/sf.lengthScale,  
+    faultAddFn1 = tg.variable_boundary_mask_fn(distMax=300e3/sf.lengthScale, distMin=10e3/sf.lengthScale, 
+                                           relativeWidth = 0.95, minPlateLength =60e3/sf.lengthScale,  
                                                out = 'bool', boundtypes='sub' )
 
-
-
-    faultAddFn2 =  tg.t2f(tg.plate_boundary_mask_fn(dist = 100e3/sf.lengthScale))
+    faultAddFn2 =  tg.t2f(tg.plate_boundary_mask_fn(dist = 50e3/sf.lengthScale))
 
     faultAddFn = operator.and_( faultAddFn1 ,  faultAddFn2)
-
 
 
     ###The following mask function provide a way of building velocity conditions within the plates,
@@ -968,8 +923,6 @@ def rebuild_mask_fns():
     velMaskFn = operator.and_( velMask1,  velMask2)
     
     return faultRmfn, faultAddFn, velMaskFn
-
-
 
 
 # def rebuild_mask_fns():
