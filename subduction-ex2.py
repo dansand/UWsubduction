@@ -447,11 +447,11 @@ for f in fCollection:
 # In[30]:
 
 
-figProx = glucifer.Figure(figsize=(960,300) )
-figProx.append( glucifer.objects.Points(swarm , proximityVariable))
-for f in fCollection:
-    figProx.append( glucifer.objects.Points(f.swarm, pointSize=5))
-figProx.show()
+#figProx = glucifer.Figure(figsize=(960,300) )
+#figProx.append( glucifer.objects.Points(swarm , proximityVariable))
+#for f in fCollection:
+#    figProx.append( glucifer.objects.Points(f.swarm, pointSize=5))
+#figProx.show()
 
 #figProx.save_database('test.gldb')
 
@@ -486,7 +486,7 @@ def set_vel_return_nodes(time, maskFn):
 # In[31]:
 
 
-#vXnodes = set_vel_return_nodes(0., velMaskFn)
+vXnodes = set_vel_return_nodes(0., velMaskFn)
 
 
 # In[31]:
@@ -794,9 +794,14 @@ def update_faults():
     #boundMaskFn = tg.combine_mask_fn(ridgeMaskFn , subMaskFn )
     
     
-    dummy = remove_faults_from_boundaries(fCollection, ridgeMaskFn)
-    dummy = remove_fault_drift(fCollection, faultloc, tolFac =ds*2)
-    dummy = pop_or_perish(tg, fCollection, faultMasterSwarm, boundMaskFn, ds*3)
+    #dummy = remove_faults_from_boundaries(fCollection, ridgeMaskFn)
+    #dummy = remove_fault_drift(fCollection, faultloc, tolFac =ds*2)
+    #dummy = pop_or_perish(tg, fCollection, faultMasterSwarm, boundMaskFn, ds*3)
+    
+    #order is very important here
+    dummy = remove_fault_drift(fCollection, faultloc)
+    dummy = pop_or_perish(tg, fCollection, faultMasterSwarm, faultAddFn , ds)
+    dummy = remove_faults_from_boundaries(tg, fCollection, faultRmfn )
     
     for f in fCollection:
         
@@ -1100,16 +1105,16 @@ uw.barrier()
 
 #ridgeMaskFn, boundMaskFn, velMaskFn
 
-maskFnVar1 = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
-maskFnVar1.data[:] = ridgeMaskFn.evaluate(mesh)
+#maskFnVar1 = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
+#maskFnVar1.data[:] = ridgeMaskFn.evaluate(mesh)
 
 
-maskFnVar2 = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
-maskFnVar2.data[:] = boundMaskFn.evaluate(mesh)
+#maskFnVar2 = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
+#maskFnVar2.data[:] = boundMaskFn.evaluate(mesh)
 
 
-maskFnVar3 = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
-maskFnVar3.data[:] = velMaskFn.evaluate(mesh)
+#maskFnVar3 = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
+#maskFnVar3.data[:] = velMaskFn.evaluate(mesh)
 
 
 # In[78]:
