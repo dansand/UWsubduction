@@ -1033,10 +1033,11 @@ def valuesUpdateFn():
 
 # ## Viz
 
-# In[76]:
+# In[1]:
 
 
 outputPath = os.path.join(os.path.abspath("."),"output/")
+
 
 if uw.rank()==0:
     if not os.path.exists(outputPath):
@@ -1056,7 +1057,7 @@ maskFnVar1.data[:] = faultAddFn.evaluate(mesh)
 maskFnVar2 = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
 maskFnVar2.data[:] = faultRmfn.evaluate(mesh)
 
-
+plate_id_fn = tg.plate_id_fn()
 maskFnVar3 = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
 maskFnVar3.data[:] = plate_id_fn.evaluate(mesh)
 
@@ -1144,7 +1145,7 @@ while step < maxSteps:
         update_tect_model(tg, tmUwMap, time, dt = dt_model)
         dt_model = 0.
         #ridgeMaskFn, subMaskFn, boundMaskFn, pIdFn= rebuild_mask_fns()
-        pIdFn = tg.plate_id_fn()
+        plate_id_fn = tg.plate_id_fn()
         faultRmfn, faultAddFn, velMaskFn = rebuild_mask_fns()
         #also update this guy for viz
         maskFnVar1.data[:] = faultAddFn.evaluate(mesh)
