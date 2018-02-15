@@ -1057,8 +1057,8 @@ maskFnVar2 = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
 maskFnVar2.data[:] = faultRmfn.evaluate(mesh)
 
 
-#maskFnVar3 = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
-#maskFnVar3.data[:] = velMaskFn.evaluate(mesh)
+maskFnVar3 = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
+maskFnVar3.data[:] = plate_id_fn.evaluate(mesh)
 
 
 # In[78]:
@@ -1081,7 +1081,7 @@ figVisc.append( glucifer.objects.Points(swarm, viscosityMapFn, pointSize=2, logS
 
 
 figMask = glucifer.Figure( store3, figsize=(960,300) )
-#figMask.append( glucifer.objects.Surface(mesh, pIdFn , valueRange=[0,3]) )
+figMask.append( glucifer.objects.Surface(mesh, pIdFn , valueRange=[0,3]) )
 figMask.append( glucifer.objects.Surface(mesh,  maskFnVar1) )
 figMask.append( glucifer.objects.Surface(mesh,  maskFnVar2) )
 #figMask.append( glucifer.objects.Surface(mesh,  maskFnVar3) )
@@ -1144,12 +1144,12 @@ while step < maxSteps:
         update_tect_model(tg, tmUwMap, time, dt = dt_model)
         dt_model = 0.
         #ridgeMaskFn, subMaskFn, boundMaskFn, pIdFn= rebuild_mask_fns()
-        
+        pIdFn = tg.plate_id_fn()
         faultRmfn, faultAddFn, velMaskFn = rebuild_mask_fns()
         #also update this guy for viz
         maskFnVar1.data[:] = faultAddFn.evaluate(mesh)
         maskFnVar2.data[:] = faultRmfn.evaluate(mesh)
-        #maskFnVar3.data[:] = velMaskFn.evaluate(mesh)
+        maskFnVar3.data[:] = plate_id_fn.evaluate(mesh)
         
         valuesUpdateFn()
         
