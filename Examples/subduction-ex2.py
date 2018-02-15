@@ -1085,6 +1085,8 @@ figMask = glucifer.Figure( store3, figsize=(960,300) )
 figMask.append( glucifer.objects.Surface(mesh,  maskFnVar1) )
 figMask.append( glucifer.objects.Surface(mesh,  maskFnVar2) )
 #figMask.append( glucifer.objects.Surface(mesh,  maskFnVar3) )
+for f in fCollection:
+    figMask.append( glucifer.objects.Points(f.swarm, pointSize=5))
 
 
 
