@@ -3,13 +3,13 @@
 
 # # Velocity Bcs
 
-# In[1]:
+# In[47]:
 
 
 #!apt-cache policy petsc-dev
 
 
-# In[2]:
+# In[48]:
 
 
 #load in parent stuff
@@ -18,7 +18,7 @@ import nb_load_stuff
 from tectModelClass import *
 
 
-# In[3]:
+# In[49]:
 
 
 #If run through Docker we'll point at the local 'unsupported dir.'
@@ -33,7 +33,7 @@ except:
     pass
 
 
-# In[4]:
+# In[50]:
 
 
 #%load_ext autoreload
@@ -44,13 +44,13 @@ from unsupported_dan.interfaces.marker2D import markerLine2D, line_collection
 from unsupported_dan.interfaces.smoothing2D import *
 
 
-# In[5]:
+# In[51]:
 
 
 ndp.maxDepth
 
 
-# In[6]:
+# In[52]:
 
 
 import numpy as np
@@ -62,11 +62,9 @@ import networkx as nx
 import operator
 
 
-
-
 # ## Changes to base params
 
-# In[7]:
+# In[53]:
 
 
 #These will keep changing if the notebook is run again without restarting!
@@ -85,14 +83,14 @@ ndp.yieldStressMax *=0.5  #150 Mpa
 
 # ## Build mesh, Stokes Variables
 
-# In[8]:
+# In[54]:
 
 
 #(ndp.rightLim - ndp.leftLim)/ndp.depth
 #md.res = 64
 
 
-# In[9]:
+# In[55]:
 
 
 yres = int(md.res)
@@ -113,7 +111,7 @@ pressureField.data[:] = 0.
 
 # ## Build plate model
 
-# In[10]:
+# In[56]:
 
 
 #Set up some velocities
@@ -137,13 +135,13 @@ dt = 0.1*ma2s/sf.time
 testTime = 5*ma2s/sf.time
 
 
-# In[11]:
+# In[57]:
 
 
 #print(vp1, vp2, vp3, vb12)
 
 
-# In[12]:
+# In[58]:
 
 
 #20 Ma moddel, timestep of 200 Ka 
@@ -154,7 +152,7 @@ tg.add_plate(2, velocities=vp2)
 tg.add_plate(3, velocities=vp3)
 
 
-# In[13]:
+# In[59]:
 
 
 tg.add_left_boundary(1, plateInitAge=ndp.slabMaxAge/3., velocities=False)
@@ -168,7 +166,7 @@ tg.add_right_boundary(3, plateInitAge=0.0, velocities=False)
 
 # ## Build plate age
 
-# In[14]:
+# In[60]:
 
 
 pIdFn = tg.plate_id_fn()
@@ -182,7 +180,7 @@ fnAge_map = fn.branching.map(fn_key = pIdFn ,
 #fig.show()
 
 
-# In[15]:
+# In[61]:
 
 
 coordinate = fn.input()
@@ -197,8 +195,7 @@ plateTempProxFn = fn.branching.conditional( ((depthFn > platethickness, ndp.pote
 
 
 
-
-# In[16]:
+# In[62]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
@@ -208,7 +205,7 @@ plateTempProxFn = fn.branching.conditional( ((depthFn > platethickness, ndp.pote
 
 # ## Make swarm and Slabs
 
-# In[17]:
+# In[63]:
 
 
 def circGradientFn(S):
@@ -224,7 +221,7 @@ def linearGradientFn(S):
     return np.tan(np.deg2rad(-25.))
 
 
-# In[18]:
+# In[64]:
 
 
 swarm = uw.swarm.Swarm(mesh=mesh, particleEscape=True)
@@ -240,29 +237,26 @@ proximityVariable.data[:] = 0.0
 signedDistanceVariable.data[:] = 0.0
 
 
-# In[19]:
+# In[65]:
 
 
 #All of these wil be needed by the slab / fault setup functions
 #We have two main options, bind them to the TectModel class. 
 #or provide them to the functions
 #collection them in a dictionary may be a useful way too proviede them to the function 
-#wthout blowing out the function arguments
+#without blowing out the function arguments
 
 tmUwMap = tm_uw_map([], velocityField, swarm, 
                     signedDistanceVariable, proxyTempVariable, proximityVariable)
 
 
-
-
-# In[20]:
+# In[66]:
 
 
 #define fault particle spacing, here ~5 paricles per element
 ds = (tg.maxX - tg.minX)/(2.*tg.mesh.elementRes[0])
 
 fCollection = line_collection([])
-
 
 
 
@@ -280,7 +274,7 @@ fnJointTemp = fn.misc.min(proxyTempVariable,plateTempProxFn)
 proxyTempVariable.data[:] = fnJointTemp.evaluate(swarm)
 
 
-# In[21]:
+# In[67]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
@@ -293,7 +287,7 @@ proxyTempVariable.data[:] = fnJointTemp.evaluate(swarm)
 # 
 # In this sections we apply setup and apply some functions to help manage the spatial (spatial) distribution of faults, as velocity boundary conditions. Both objects need to be able to talk to teh TectModel.
 
-# In[22]:
+# In[68]:
 
 
 # Setup a swarm to define the replacment positions
@@ -337,7 +331,7 @@ del allys
 # dummy = remove_faults_from_boundaries(fCollection, ridgeMaskFn)
 # 
 
-# In[24]:
+# In[96]:
 
 
 ##What are we doing here??
@@ -387,17 +381,32 @@ dummy = pop_or_perish(tg, fCollection, faultMasterSwarm, faultAddFn , ds)
 dummy = remove_faults_from_boundaries(tg, fCollection, faultRmfn )
 
 
+# In[91]:
+
+
+#maskFn_ = tg.t2f(faultRmfn)
+#pIdFn = tg.plate_id_fn(maskFn=maskFn_)
+
+
+# In[92]:
+
+
+#fig = glucifer.Figure(figsize=(600, 300))
+#fig.append( glucifer.objects.Surface(tg.mesh, maskFn_))
+#fig.show()
+
+
 # ## Proximity
 # 
 # 
 
-# In[25]:
+# In[93]:
 
 
 proximityVariable.data[:] = 0
 
 
-# In[26]:
+# In[94]:
 
 
 for f in fCollection:
@@ -405,14 +414,23 @@ for f in fCollection:
     f.set_proximity_director(swarm, proximityVariable, searchFac = 2., locFac=1.0)
 
 
-# In[30]:
+# In[99]:
+
+
+#update_faults()
+
+
+# In[101]:
 
 
 #figProx = glucifer.Figure(figsize=(960,300) )
 #figProx.append( glucifer.objects.Points(swarm , proximityVariable))
+#figProx.append( glucifer.objects.Surface(mesh, faultAddFn))
+
 #for f in fCollection:
 #    figProx.append( glucifer.objects.Points(f.swarm, pointSize=5))
 #figProx.show()
+
 
 #figProx.save_database('test.gldb')
 
@@ -744,7 +762,7 @@ def rebuild_solver(stokes):
     return solver
 
 
-# In[49]:
+# In[98]:
 
 
 def update_faults():
@@ -773,6 +791,7 @@ def update_faults():
         #quite experimental!!!
         repair_markerLines(f, ds, k=8)
     
+#faultRmfn
 
 
 # In[50]:
@@ -1082,9 +1101,10 @@ figVisc.append( glucifer.objects.Points(swarm, viscosityMapFn, pointSize=2, logS
 
 
 figMask = glucifer.Figure( store3, figsize=(960,300) )
-figMask.append( glucifer.objects.Surface(mesh, pIdFn , valueRange=[0,3]) )
 figMask.append( glucifer.objects.Surface(mesh,  maskFnVar1) )
 figMask.append( glucifer.objects.Surface(mesh,  maskFnVar2) )
+figMask.append( glucifer.objects.Surface(mesh, maskFnVar3 , valueRange=[0,3]) )
+
 #figMask.append( glucifer.objects.Surface(mesh,  maskFnVar3) )
 for f in fCollection:
     figMask.append( glucifer.objects.Points(f.swarm, pointSize=5))
@@ -1116,7 +1136,7 @@ steps_output = 10   # output every N timesteps
 swarm_update = 10   # output every N timesteps
 faults_update = 10
 dt_model = 0.
-steps_update_model = 10
+steps_update_model = 5
 
 valuesUpdateFn()
 
@@ -1133,12 +1153,6 @@ while step < maxSteps:
     dt, time, step =  advect_update()
     dt_model += dt
     
-    
-    #running fault healing/addition, map back to swarm
-    if step % faults_update == 0:
-        update_faults()
-    if step % swarm_update == 0:
-        update_swarm()
         
     #update tectonic model
     if step % steps_update_model == 0:
@@ -1153,6 +1167,12 @@ while step < maxSteps:
         maskFnVar3.data[:] = plate_id_fn.evaluate(mesh)
         
         valuesUpdateFn()
+        
+    #running fault healing/addition, map back to swarm
+    if step % faults_update == 0:
+        update_faults()
+    if step % swarm_update == 0:
+        update_swarm()
         
     #rebuild stokes
     if step % steps_update_model == 0:
