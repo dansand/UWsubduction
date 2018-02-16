@@ -3,13 +3,13 @@
 
 # # Velocity Bcs
 
-# In[1]:
+# In[83]:
 
 
 #!apt-cache policy petsc-dev
 
 
-# In[2]:
+# In[84]:
 
 
 #load in parent stuff
@@ -18,7 +18,7 @@ import nb_load_stuff
 from tectModelClass import *
 
 
-# In[3]:
+# In[85]:
 
 
 #If run through Docker we'll point at the local 'unsupported dir.'
@@ -33,7 +33,7 @@ except:
     pass
 
 
-# In[4]:
+# In[86]:
 
 
 #%load_ext autoreload
@@ -45,13 +45,13 @@ from unsupported_dan.interfaces.smoothing2D import *
 from unsupported_dan.utilities.misc import cosine_taper
 
 
-# In[5]:
+# In[87]:
 
 
 ndp.maxDepth
 
 
-# In[6]:
+# In[88]:
 
 
 import numpy as np
@@ -65,7 +65,7 @@ import operator
 
 # ## Changes to base params
 
-# In[7]:
+# In[89]:
 
 
 #These will keep changing if the notebook is run again without restarting!
@@ -84,14 +84,14 @@ ndp.yieldStressMax *=0.5  #150 Mpa
 
 # ## Build mesh, Stokes Variables
 
-# In[8]:
+# In[90]:
 
 
 #(ndp.rightLim - ndp.leftLim)/ndp.depth
 #md.res = 64
 
 
-# In[9]:
+# In[91]:
 
 
 yres = int(md.res)
@@ -112,7 +112,7 @@ pressureField.data[:] = 0.
 
 # ## Build plate model
 
-# In[10]:
+# In[92]:
 
 
 #Set up some velocities
@@ -136,13 +136,13 @@ dt = 0.1*ma2s/sf.time
 testTime = 5*ma2s/sf.time
 
 
-# In[11]:
+# In[93]:
 
 
 #print(vp1, vp2, vp3, vb12)
 
 
-# In[12]:
+# In[94]:
 
 
 #20 Ma moddel, timestep of 200 Ka 
@@ -153,7 +153,7 @@ tg.add_plate(2, velocities=vp2)
 tg.add_plate(3, velocities=vp3)
 
 
-# In[13]:
+# In[95]:
 
 
 tg.add_left_boundary(1, plateInitAge=ndp.slabMaxAge/3., velocities=False)
@@ -167,7 +167,7 @@ tg.add_right_boundary(3, plateInitAge=0.0, velocities=False)
 
 # ## Build plate age
 
-# In[14]:
+# In[96]:
 
 
 pIdFn = tg.plate_id_fn()
@@ -181,7 +181,7 @@ fnAge_map = fn.branching.map(fn_key = pIdFn ,
 #fig.show()
 
 
-# In[15]:
+# In[97]:
 
 
 coordinate = fn.input()
@@ -196,7 +196,7 @@ plateTempProxFn = fn.branching.conditional( ((depthFn > platethickness, ndp.pote
 
 
 
-# In[16]:
+# In[98]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
@@ -206,7 +206,7 @@ plateTempProxFn = fn.branching.conditional( ((depthFn > platethickness, ndp.pote
 
 # ## Make swarm and Slabs
 
-# In[17]:
+# In[99]:
 
 
 def circGradientFn(S):
@@ -222,7 +222,7 @@ def linearGradientFn(S):
     return np.tan(np.deg2rad(-25.))
 
 
-# In[18]:
+# In[100]:
 
 
 swarm = uw.swarm.Swarm(mesh=mesh, particleEscape=True)
@@ -238,7 +238,7 @@ proximityVariable.data[:] = 0.0
 signedDistanceVariable.data[:] = 0.0
 
 
-# In[19]:
+# In[101]:
 
 
 #All of these wil be needed by the slab / fault setup functions
@@ -251,7 +251,7 @@ tmUwMap = tm_uw_map([], velocityField, swarm,
                     signedDistanceVariable, proxyTempVariable, proximityVariable)
 
 
-# In[20]:
+# In[102]:
 
 
 #define fault particle spacing, here ~5 paricles per element
@@ -275,7 +275,7 @@ fnJointTemp = fn.misc.min(proxyTempVariable,plateTempProxFn)
 proxyTempVariable.data[:] = fnJointTemp.evaluate(swarm)
 
 
-# In[21]:
+# In[103]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
@@ -288,7 +288,7 @@ proxyTempVariable.data[:] = fnJointTemp.evaluate(swarm)
 # 
 # In this sections we apply setup and apply some functions to help manage the spatial (spatial) distribution of faults, as velocity boundary conditions. Both objects need to be able to talk to teh TectModel.
 
-# In[22]:
+# In[104]:
 
 
 # Setup a swarm to define the replacment positions
@@ -332,7 +332,7 @@ del allys
 # dummy = remove_faults_from_boundaries(fCollection, ridgeMaskFn)
 # 
 
-# In[77]:
+# In[105]:
 
 
 ##What are we doing here??
@@ -383,14 +383,14 @@ dummy = pop_or_perish(tg, fCollection, faultMasterSwarm, faultAddFn , ds)
 dummy = remove_faults_from_boundaries(tg, fCollection, faultRmfn )
 
 
-# In[78]:
+# In[106]:
 
 
 #maskFn_ = tg.t2f(faultRmfn)
 #pIdFn = tg.plate_id_fn(maskFn=maskFn_)
 
 
-# In[82]:
+# In[119]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
@@ -400,7 +400,7 @@ dummy = remove_faults_from_boundaries(tg, fCollection, faultRmfn )
 
 # ## Fault rheology domain
 
-# In[26]:
+# In[108]:
 
 
 #xTfn = 
@@ -411,7 +411,7 @@ subZoneDistfn = tg.subZoneAbsDistFn(upper=True)
 faultTaperFunction  = cosine_taper(subZoneDistfn, faultLength, faultTaper)
 
 
-# In[27]:
+# In[109]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
@@ -423,13 +423,13 @@ faultTaperFunction  = cosine_taper(subZoneDistfn, faultLength, faultTaper)
 # 
 # 
 
-# In[28]:
+# In[110]:
 
 
 proximityVariable.data[:] = 0
 
 
-# In[29]:
+# In[111]:
 
 
 for f in fCollection:
@@ -443,12 +443,12 @@ for f in fCollection:
 #update_faults()
 
 
-# In[31]:
+# In[114]:
 
 
 #figProx = glucifer.Figure(figsize=(960,300) )
 #figProx.append( glucifer.objects.Points(swarm , proximityVariable))
-#figProx.append( glucifer.objects.Surface(mesh, faultAddFn))
+#figProx.append( glucifer.objects.Surface(mesh, faultRmfn))
 
 #for f in fCollection:
 #    figProx.append( glucifer.objects.Points(f.swarm, pointSize=5))
