@@ -934,19 +934,19 @@ def update_tect_model(tectModel, tmUwMap, time, dt = 0.0 ):
             pass
         
 
-def rebuild_mask_fns(tectModel):
+def rebuild_mask_fns():
 
-    faultRmfn = tectModel.t2f(tectModel.variable_boundary_mask_fn(distMax=10., distMin=10e3/sf.lengthScale, relativeWidth = 0.9, 
+    faultRmfn = tg.t2f(tg.variable_boundary_mask_fn(distMax=10., distMin=10e3/sf.lengthScale, relativeWidth = 0.9, 
                                       minPlateLength =60e3/sf.lengthScale,  
                                                out = 'bool', boundtypes='sub' ))
 
 
     #this one will put particles back into the fault
-    faultAddFn1 = tectModel.variable_boundary_mask_fn(distMax=10., distMin=10e3/sf.lengthScale, 
+    faultAddFn1 = tg.variable_boundary_mask_fn(distMax=10., distMin=10e3/sf.lengthScale, 
                                            relativeWidth = 0.95, minPlateLength =60e3/sf.lengthScale,  
                                                out = 'bool', boundtypes='sub' )
 
-    faultAddFn2 =  tectModel.t2f(tectModel.variable_boundary_mask_fn(distMax = 100e3/sf.lengthScale, relativeWidth = 0.9 ))
+    faultAddFn2 =  tg.t2f(tg.variable_boundary_mask_fn(distMax = 100e3/sf.lengthScale, relativeWidth = 0.9 ))
 
 
     faultAddFn = operator.and_( faultAddFn1 ,  faultAddFn2)
@@ -955,17 +955,17 @@ def rebuild_mask_fns(tectModel):
     ###The following mask function provide a way of building velocity conditions within the plates,
     #while leaving nodes near the plate boundaries free to adjust
 
-    velMask1 = tectModel.variable_boundary_mask_fn(distMax=20.2, distMin=0.0, relativeWidth = 0.85, 
+    velMask1 = tg.variable_boundary_mask_fn(distMax=20.2, distMin=0.0, relativeWidth = 0.85, 
                             minPlateLength =50e3/sf.lengthScale,  out = 'bool', boundtypes='ridge')
 
-    velMask2= tectModel.plate_interior_mask_fn(relativeWidth=0.95, 
+    velMask2= tg.plate_interior_mask_fn(relativeWidth=0.95, 
                                             minPlateLength=10e3/sf.lengthScale, invert=False)
 
     velMaskFn = operator.and_( velMask1,  velMask2)
     
     
     #the following dictates where the fault rheology will be activated
-    subZoneDistfn = tectModel.subZoneAbsDistFn(upper=True)
+    subZoneDistfn = tg.subZoneAbsDistFn(upper=True)
     faultTaperFunction  = cosine_taper(subZoneDistfn, faultLength, faultTaper)
     
     return faultRmfn, faultAddFn, velMaskFn, faultTaperFunction
@@ -1121,7 +1121,7 @@ maskFnVar3.data[:] = plate_id_fn.evaluate(mesh)
 
 #maskFnVar4 = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
 maskFnVar4 =  swarm.add_variable( dataType="double", count=1 )
-maskFnVar4.data[:] = viscosityMapFn.evaluate(mesh)
+maskFnVar4.data[:] = viscosityMapFn.evaluate(swarm)
 
 
 # In[72]:
@@ -1140,7 +1140,7 @@ for f in fCollection:
 
 figVisc = glucifer.Figure( store2, figsize=(960,300) )
 #figVisc.append( glucifer.objects.Points(swarm, viscosityMapFn, pointSize=2, logScale=True) )
-figVisc.append( glucifer.objects.Surface(mesh,  maskFnVar4) )
+figVisc.append( glucifer.objects.Points(swarm,  maskFnVar4, logScale=True) )
 
 
 
@@ -1206,17 +1206,18 @@ while step < maxSteps:
         dt_model = 0.
         #ridgeMaskFn, subMaskFn, boundMaskFn, pIdFn= rebuild_mask_fns()
         plate_id_fn = tg.plate_id_fn()
-        faultRmfn, faultAddFn, velMaskFn, faultTaperFunction = rebuild_mask_fns(tg)
-        interfaceViscosityFn = fn.misc.constant(0.5) + faultTaperFunction*mantleRheologyFn
+        faultRmfn, faultAddFn, velMaskFn, faultTaperFunction = rebuild_mask_fns()
         
-        viscosityMapFn = fn.branching.map( fn_key = proximityVariable,
-                             mapping = {0:mantleRheologyFn,
-                                        2:interfaceViscosityFn} )
+        #interfaceViscosityFn = fn.misc.constant(0.5) + faultTaperFunction*mantleRheologyFn
+        
+        #viscosityMapFn = fn.branching.map( fn_key = proximityVariable,
+        #                     mapping = {0:mantleRheologyFn,
+        #                                2:interfaceViscosityFn} )
         #also update this guy for viz
         maskFnVar1.data[:] = faultAddFn.evaluate(mesh)
         maskFnVar2.data[:] = faultRmfn.evaluate(mesh)
         maskFnVar3.data[:] = plate_id_fn.evaluate(mesh)
-        maskFnVar4.data[:] = viscosityMapFn.evaluate(mesh)
+        maskFnVar4.data[:] = viscosityMapFn.evaluate(swarm)
 
         
         valuesUpdateFn()
