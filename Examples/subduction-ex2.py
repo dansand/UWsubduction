@@ -934,19 +934,19 @@ def update_tect_model(tectModel, tmUwMap, time, dt = 0.0 ):
             pass
         
 
-def rebuild_mask_fns():
+def rebuild_mask_fns(tectModel):
 
-    faultRmfn = tectModlel.t2f(tectModlel.variable_boundary_mask_fn(distMax=10., distMin=10e3/sf.lengthScale, relativeWidth = 0.9, 
+    faultRmfn = tectModel.t2f(tectModel.variable_boundary_mask_fn(distMax=10., distMin=10e3/sf.lengthScale, relativeWidth = 0.9, 
                                       minPlateLength =60e3/sf.lengthScale,  
                                                out = 'bool', boundtypes='sub' ))
 
 
     #this one will put particles back into the fault
-    faultAddFn1 = tectModlel.variable_boundary_mask_fn(distMax=10., distMin=10e3/sf.lengthScale, 
+    faultAddFn1 = tectModel.variable_boundary_mask_fn(distMax=10., distMin=10e3/sf.lengthScale, 
                                            relativeWidth = 0.95, minPlateLength =60e3/sf.lengthScale,  
                                                out = 'bool', boundtypes='sub' )
 
-    faultAddFn2 =  tectModlel.t2f(tectModlel.variable_boundary_mask_fn(distMax = 100e3/sf.lengthScale, relativeWidth = 0.9 ))
+    faultAddFn2 =  tectModel.t2f(tectModel.variable_boundary_mask_fn(distMax = 100e3/sf.lengthScale, relativeWidth = 0.9 ))
 
 
     faultAddFn = operator.and_( faultAddFn1 ,  faultAddFn2)
@@ -955,20 +955,22 @@ def rebuild_mask_fns():
     ###The following mask function provide a way of building velocity conditions within the plates,
     #while leaving nodes near the plate boundaries free to adjust
 
-    velMask1 = tectModlel.variable_boundary_mask_fn(distMax=20.2, distMin=0.0, relativeWidth = 0.85, 
+    velMask1 = tectModel.variable_boundary_mask_fn(distMax=20.2, distMin=0.0, relativeWidth = 0.85, 
                             minPlateLength =50e3/sf.lengthScale,  out = 'bool', boundtypes='ridge')
 
-    velMask2= tectModlel.plate_interior_mask_fn(relativeWidth=0.95, 
+    velMask2= tectModel.plate_interior_mask_fn(relativeWidth=0.95, 
                                             minPlateLength=10e3/sf.lengthScale, invert=False)
 
     velMaskFn = operator.and_( velMask1,  velMask2)
     
     
     #the following dictates where the fault rheology will be activated
-    subZoneDistfn = tectModlel.subZoneAbsDistFn(upper=True)
+    subZoneDistfn = tectModel.subZoneAbsDistFn(upper=True)
     faultTaperFunction  = cosine_taper(subZoneDistfn, faultLength, faultTaper)
     
     return faultRmfn, faultAddFn, velMaskFn, faultTaperFunction
+    
+    
 
 
 # def rebuild_mask_fns():
@@ -1117,8 +1119,9 @@ maskFnVar3 = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
 maskFnVar3.data[:] = plate_id_fn.evaluate(mesh)
 
 
-maskFnVar4 = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
-maskFnVar4.data[:] = faultTaperFunction.evaluate(mesh)
+#maskFnVar4 = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
+maskFnVar4 =  swarm.add_variable( dataType="double", count=1 )
+maskFnVar4.data[:] = viscosityMapFn.evaluate(mesh)
 
 
 # In[72]:
@@ -1136,7 +1139,7 @@ for f in fCollection:
 #figProx.show()
 
 figVisc = glucifer.Figure( store2, figsize=(960,300) )
-figVisc.append( glucifer.objects.Points(swarm, viscosityMapFn, pointSize=2, logScale=True) )
+#figVisc.append( glucifer.objects.Points(swarm, viscosityMapFn, pointSize=2, logScale=True) )
 figVisc.append( glucifer.objects.Surface(mesh,  maskFnVar4) )
 
 
@@ -1213,7 +1216,7 @@ while step < maxSteps:
         maskFnVar1.data[:] = faultAddFn.evaluate(mesh)
         maskFnVar2.data[:] = faultRmfn.evaluate(mesh)
         maskFnVar3.data[:] = plate_id_fn.evaluate(mesh)
-        maskFnVar4.data[:] = faultTaperFunction.evaluate(mesh)
+        maskFnVar4.data[:] = viscosityMapFn.evaluate(mesh)
 
         
         valuesUpdateFn()
