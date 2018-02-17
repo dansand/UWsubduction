@@ -423,7 +423,7 @@ faultTaperFunction  = cosine_taper(subZoneDistfn, faultLength, faultTaper)
 # 
 # 
 
-# In[110]:
+# In[120]:
 
 
 proximityVariable.data[:] = 0
@@ -456,6 +456,13 @@ for f in fCollection:
 
 
 #figProx.save_database('test.gldb')
+
+
+# In[157]:
+
+
+#testMM = fn.view.min_max(uw.function.input(f.swarm.particleCoordinates))
+#dummyFn = testMM.evaluate(tWalls)
 
 
 # ## Prescribed velocity
@@ -746,7 +753,7 @@ def advect_update():
 # In[53]:
 
 
-def update_stokes(time):
+def update_stokes(time, viscosityMapFn ):
     
 
 
@@ -1198,6 +1205,10 @@ while step < maxSteps:
         plate_id_fn = tg.plate_id_fn()
         faultRmfn, faultAddFn, velMaskFn, faultTaperFunction = rebuild_mask_fns()
         interfaceViscosityFn = fn.misc.constant(0.5) + faultTaperFunction*mantleRheologyFn
+        
+        viscosityMapFn = fn.branching.map( fn_key = proximityVariable,
+                             mapping = {0:mantleRheologyFn,
+                                        2:interfaceViscosityFn} )
         #also update this guy for viz
         maskFnVar1.data[:] = faultAddFn.evaluate(mesh)
         maskFnVar2.data[:] = faultRmfn.evaluate(mesh)
@@ -1217,7 +1228,7 @@ while step < maxSteps:
     if step % steps_update_model == 0:
         del solver
         del stokes
-        stokes = update_stokes(time)
+        stokes = update_stokes(time, viscosityMapFn )
         solver = rebuild_solver(stokes)
         
     
