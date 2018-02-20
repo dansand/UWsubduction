@@ -136,13 +136,6 @@ temperatureField.data[:] = 0.
 temperatureDotField.data[:] = 0.
 
 
-# In[21]:
-
-
-wallYs = mesh.data[mesh.specialSets['MaxI_VertexSet'].data][:,1]
-dy0 = wallYs[-1] - wallYs[-2]
-
-
 # In[56]:
 
 
@@ -1113,12 +1106,12 @@ for f in fCollection:
 
 time = 0.  # Initial time
 step = 0 
-maxSteps = 2000      # Maximum timesteps 
-steps_output = 5   # output every N timesteps
-swarm_update = 5   # output every N timesteps
+maxSteps = 100      # Maximum timesteps 
+steps_output = 25   # output every N timesteps
+swarm_update = 10   # output every N timesteps
 faults_update = 10
 dt_model = 0.
-steps_update_model = 5
+steps_update_model = 10
 
 valuesUpdateFn()
 
@@ -1139,7 +1132,7 @@ while step < maxSteps:
     dt, time, step =  advect_update()
     dt_model += dt
     
-    population_control.repopulate()
+    
     
         
     #update tectonic model
@@ -1166,7 +1159,9 @@ while step < maxSteps:
     if step % faults_update == 0:
         update_faults()
     if step % swarm_update == 0:
+        population_control.repopulate()
         update_swarm()
+        
         
     #rebuild stokes
     #if step % steps_update_model == 0:
