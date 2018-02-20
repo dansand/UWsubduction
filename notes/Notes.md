@@ -1,5 +1,10 @@
 # Notes
 
+## Models
+
+* Stokes callbacks aren't actually implemented
+* buoyancy factor
+
 ## TectModel
 
 ### Design
