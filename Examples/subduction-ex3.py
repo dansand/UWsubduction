@@ -788,9 +788,9 @@ population_control = uw.swarm.PopulationControl(swarm, deleteThreshold=0.006,
 
 
 # Here we'll handle everything that should be advected - i.e. every timestep
-def advect_update():
+def advect_update(dt):
     # Retrieve the maximum possible timestep for the advection system.
-    dt = advector.get_max_dt()
+    #dt = advector.get_max_dt()
     # Advect swarm
     advector.integrate(dt)
     
@@ -799,7 +799,7 @@ def advect_update():
         f.advection(dt)
     
     
-    return dt, time+dt, step+1
+    return time+dt, step+1
 
 
 # In[53]:
@@ -1130,7 +1130,7 @@ while step < maxSteps:
     advDiff.integrate(dt)
     
     #advect swarm and faults
-    dt, time, step =  advect_update()
+    time, step =  advect_update(dt)
     dt_model += dt
     
     
