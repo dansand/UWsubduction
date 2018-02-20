@@ -728,8 +728,8 @@ def pressure_calibrate():
 
 stokes = uw.systems.Stokes( velocityField  = velocityField, 
                                    pressureField  = pressureField,
-                                   #conditions     = [velBC, nbc],
-                                   conditions     = [velBC, ],
+                                   conditions     = [velBC, nbc],
+                                   #conditions     = [velBC, ],
                                    fn_viscosity   = viscosityMapFn, 
                                    fn_bodyforce   = buoyancyMapFn )
 
