@@ -100,6 +100,8 @@ md.nltol = 0.025
 md.ppc = 25
 #print(ndp.faultThickness*2900)
 ndp.yieldStressMax *=0.5  #150 Mpa
+md.buoyancyFac = 1.25
+md.refineMeshStatic = True
 
 
 # ## Build mesh, Stokes Variables
@@ -107,20 +109,20 @@ ndp.yieldStressMax *=0.5  #150 Mpa
 # In[8]:
 
 
-#(ndp.rightLim - ndp.leftLim)/ndp.depth
-#md.res = 64
-
-
-# In[10]:
-
-
 yres = int(md.res)
-xres = int(md.res*12) 
+xres = int(md.res*6) 
+
+if md.refineMeshStatic:
+    minCoord_    = (ndp.leftLim, -1.*ndp.depth) 
+    maxCoord_    = (ndp.rightLim, 0.)
+else:
+    minCoord_    = (ndp.leftLim, 1. - ndp.depth) 
+    maxCoord_    = (ndp.rightLim, 1.)
 
 mesh = uw.mesh.FeMesh_Cartesian( elementType = (md.elementType),
                                  elementRes  = (xres, yres), 
-                                 minCoord    = (ndp.leftLim, 1. - ndp.depth), 
-                                 maxCoord    = (ndp.rightLim, 1.)) 
+                                 minCoord    = minCoord_, 
+                                 maxCoord    = maxCoord_) 
 
 velocityField = uw.mesh.MeshVariable( mesh=mesh,         nodeDofCount=2)
 pressureField   = uw.mesh.MeshVariable( mesh=mesh.subMesh, nodeDofCount=1 )
@@ -134,34 +136,68 @@ temperatureField.data[:] = 0.
 temperatureDotField.data[:] = 0.
 
 
-# In[20]:
+# In[21]:
 
 
+wallYs = mesh.data[mesh.specialSets['MaxI_VertexSet'].data][:,1]
+dy0 = wallYs[-1] - wallYs[-2]
 
 
-
-# In[23]:
-
-
-#mesh.reset()
-#with mesh.deform_mesh():
-    #mesh.data[:,0] = mesh.data[:,0] * np.exp(mesh.data[:,0]*mesh.data[:,0]) / np.exp(mesh.maxCoord[0]*mesh.maxCoord[0])
-    #mesh.data[:,1] = mesh.data[:,1] * np.exp(mesh.data[:,1]*mesh.data[:,1]*2) / np.exp((1.)*(1.)*2)
+# In[56]:
 
 
-# In[25]:
+meshLambda = 0.7
+if md.refineMeshStatic:
+
+    mesh.reset()
+    
+    with mesh.deform_mesh():
+
+        normXs = 2.*mesh.data[:,0]/(mesh.maxCoord[0] - mesh.minCoord[0])
+        mesh.data[:,0] = mesh.data[:,0] * np.exp(meshLambda*normXs**2) / np.exp(meshLambda*1.0**2)
+
+        normYs = -1.*mesh.data[:,1]/(mesh.maxCoord[1] - mesh.minCoord[1])
+        mesh.data[:,1] = mesh.data[:,1] * np.exp(meshLambda*normYs**2)/np.exp(meshLambda*1.0**2)
+
+        mesh.data[:,1] = mesh.data[:,1] + 1.0
+
+    #Now we have to manuallt reset these attributes
+
+    mesh._maxCoord = (mesh._maxCoord[0], 1.0)
+    mesh._minCoord = (mesh._minCoord[0], 1.0 - ndp.depth)
+
+
+# In[61]:
 
 
 #figMesh = glucifer.Figure()
 #figMesh.append( glucifer.objects.Mesh(mesh)) 
 #figMesh.show()
-
 #figMesh.save_database('test.gldb')
+
+
+# In[63]:
+
+
+#assert np.allclose(mesh.maxCoord[1], mesh.data[:,1].max())
+
+
+# In[64]:
+
+
+#wallYs = mesh.data[mesh.specialSets['MaxI_VertexSet'].data][:,1]
+#dy1 = wallYs[-1] - wallYs[-2]
+
+
+# In[65]:
+
+
+#dy1/dy0
 
 
 # ## Build plate model
 
-# In[10]:
+# In[29]:
 
 
 #Set up some velocities
@@ -175,13 +211,13 @@ refVel = 2*cm2ms
 refVel /= sf.velocity
 
 
-# In[11]:
+# In[30]:
 
 
 #print(refVel)
 
 
-# In[12]:
+# In[31]:
 
 
 #20 Ma moddel, timestep of 200 Ka 
@@ -192,7 +228,7 @@ tg.add_plate(2, velocities=False)
 #tg.add_plate(3, velocities=False)
 
 
-# In[13]:
+# In[32]:
 
 
 tg.add_left_boundary(1, plateInitAge=0., velocities=False)
@@ -206,7 +242,7 @@ tg.add_right_boundary(2, plateInitAge=0., velocities=False)
 
 # ## Build plate age
 
-# In[14]:
+# In[33]:
 
 
 pIdFn = tg.plate_id_fn()
@@ -220,7 +256,7 @@ fnAge_map = fn.branching.map(fn_key = pIdFn ,
 #fig.show()
 
 
-# In[15]:
+# In[34]:
 
 
 coordinate = fn.input()
@@ -235,7 +271,7 @@ plateTempProxFn = fn.branching.conditional( ((depthFn > platethickness, ndp.pote
 
 
 
-# In[16]:
+# In[35]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
@@ -245,7 +281,7 @@ plateTempProxFn = fn.branching.conditional( ((depthFn > platethickness, ndp.pote
 
 # ## Make swarm and Slabs
 
-# In[17]:
+# In[36]:
 
 
 def circGradientFn(S):
@@ -261,7 +297,7 @@ def linearGradientFn(S):
     return np.tan(np.deg2rad(-25.))
 
 
-# In[18]:
+# In[37]:
 
 
 swarm = uw.swarm.Swarm(mesh=mesh, particleEscape=True)
@@ -277,7 +313,7 @@ proximityVariable.data[:] = 0.0
 signedDistanceVariable.data[:] = 0.0
 
 
-# In[19]:
+# In[38]:
 
 
 #All of these wil be needed by the slab / fault setup functions
@@ -290,7 +326,7 @@ tmUwMap = tm_uw_map([], velocityField, swarm,
                     signedDistanceVariable, proxyTempVariable, proximityVariable)
 
 
-# In[20]:
+# In[39]:
 
 
 #define fault particle spacing, here ~5 paricles per element
@@ -314,7 +350,7 @@ fnJointTemp = fn.misc.min(proxyTempVariable,plateTempProxFn)
 proxyTempVariable.data[:] = fnJointTemp.evaluate(swarm)
 
 
-# In[21]:
+# In[42]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
@@ -325,18 +361,20 @@ proxyTempVariable.data[:] = fnJointTemp.evaluate(swarm)
 
 # ## Temperature Field
 
-# In[22]:
+# In[43]:
 
 
 projectorMeshTemp= uw.utils.MeshVariable_Projection( temperatureField, proxyTempVariable , type=0 )
 projectorMeshTemp.solve()
 
 
-# In[23]:
+# In[48]:
 
 
-#figTemp = glucifer.Figure(figsize=(600, 300))
-#figTemp.append( glucifer.objects.Surface(mesh, temperatureField, onMesh=True))
+#figTemp = glucifer.Figure()
+#figTemp.append( glucifer.objects.Surface(mesh, temperatureField, onMesh=True, colourBar=False))
+#figTemp.append( glucifer.objects.Contours(mesh, temperatureField,interval=0.33, 
+#                                          colours='black', colourBar=False, quality=3))
 #figTemp.show()
 #figTemp.save_database('test.gldb')
 
@@ -581,7 +619,7 @@ dirichTempBC = uw.conditions.DirichletCondition(     variable=temperatureField,
 
 # Now create a buoyancy force vector using the density and the vertical unit vector. 
 #thermalDensityFn = ndp.rayleigh*(1. - proxyTempVariable)
-thermalDensityFn = ndp.rayleigh*(1. - temperatureField)
+thermalDensityFn = md.buoyancyFac*ndp.rayleigh*(1. - temperatureField)
 
 
 
