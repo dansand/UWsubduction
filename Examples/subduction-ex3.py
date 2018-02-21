@@ -538,15 +538,13 @@ lWalls = mesh.specialSets["MinI_VertexSet"]
 rWalls = mesh.specialSets["MaxI_VertexSet"]
 
 
+# In[ ]:
+
+
+
+
+
 # In[41]:
-
-
-
-
-#lithPressureFn.evaluate(lWalls)
-
-
-# In[42]:
 
 
 pressureGrad = fn.misc.constant(0.)
@@ -565,7 +563,7 @@ if rWalls.data.shape[0]:
 #                                                            lithPressureFn.evaluate(bWalls) ) )
 
 
-# In[43]:
+# In[42]:
 
 
 vxId = bWalls & rWalls 
@@ -598,7 +596,7 @@ nbc = uw.conditions.NeumannCondition( fn_flux=appliedTractionField,
                                       indexSetsPerDof=(lWalls +  r_sub, None) )
 
 
-# In[44]:
+# In[43]:
 
 
 dirichTempBC = uw.conditions.DirichletCondition(     variable=temperatureField, 
@@ -607,7 +605,7 @@ dirichTempBC = uw.conditions.DirichletCondition(     variable=temperatureField,
 
 # ## Bouyancy
 
-# In[45]:
+# In[44]:
 
 
 # Now create a buoyancy force vector using the density and the vertical unit vector. 
@@ -623,7 +621,7 @@ buoyancyMapFn = thermalDensityFn*gravity
 
 # ## Rheology
 
-# In[42]:
+# In[45]:
 
 
 symStrainrate = fn.tensor.symmetric( 
@@ -640,7 +638,7 @@ def safe_visc(func, viscmin=ndp.viscosityMin, viscmax=ndp.viscosityMax):
     return fn.misc.max(viscmin, fn.misc.min(viscmax, func))
 
 
-# In[43]:
+# In[46]:
 
 
 #use temperature field now
@@ -674,12 +672,13 @@ yielding = ysf/(2.*(strainRate_2ndInvariant) + 1e-15)
 
 mantleRheologyFn = safe_visc(fn.misc.min(mantleCreep, yielding), viscmin=ndp.viscosityMin, viscmax=ndp.viscosityMax)
 
-#Subduction interface viscosity
-interfaceViscosityFn = fn.misc.constant(0.5) + faultTaperFunction*mantleRheologyFn
+
+#Subduction interface viscosity, comprosing bothe vertical and horizontal conditions
+interfaceViscosityFn = fn.branching.conditional( ((depthFn < ndp.lowerMantleDepth, fn.misc.constant(0.5) + faultTaperFunction*mantleRheologyFn), 
+                                           (depthFn > 2*ndp.faultThickness,                      fn.misc.constant(0.5))  ))
 
 
-
-# In[44]:
+# In[47]:
 
 
 #viscconds = ((proximityVariable == 0, mantleRheologyFn),
@@ -696,7 +695,7 @@ viscosityMapFn = fn.branching.map( fn_key = proximityVariable,
 
 # ## Stokes
 
-# In[45]:
+# In[48]:
 
 
 surfaceArea = uw.utils.Integral(fn=1.0,mesh=mesh, integrationType='surface', surfaceIndexSet=tWalls)
@@ -723,7 +722,7 @@ def pressure_calibrate():
     smooth_pressure(mesh)
 
 
-# In[46]:
+# In[49]:
 
 
 stokes = uw.systems.Stokes( velocityField  = velocityField, 
@@ -734,7 +733,7 @@ stokes = uw.systems.Stokes( velocityField  = velocityField,
                                    fn_bodyforce   = buoyancyMapFn )
 
 
-# In[47]:
+# In[50]:
 
 
 solver = uw.systems.Solver(stokes)
@@ -745,7 +744,7 @@ solver.set_penalty(1.0e7)
 solver.options.scr.ksp_rtol = 1.0e-4
 
 
-# In[48]:
+# In[175]:
 
 
 solver.solve(nonLinearIterate=True, nonLinearTolerance=md.nltol, callback_post_solve = pressure_calibrate)
@@ -916,7 +915,7 @@ def set_boundary_vel_update(tectModel, platePair, time, dt):
 
 
 def strain_rate_field_update(tectModel, e, tmUwMap):
-    dist = 100e3/sf.lengthScale #limit the search radius
+    s#limit the search radius
     maskFn = tectModel.plate_boundary_mask_fn(dist, out='num',bound=e )
     srLocMins, srLocMaxs = strain_rate_min_max(tectModel, tmUwMap, maskFn)
     if tg.is_subduction_boundary(e):
