@@ -2,8 +2,11 @@
 
 ## Models
 
+### Bugs
+
 * Stokes callbacks aren't actually implemented
 * buoyancy factor
+* in ex1 ex2 the horizontal resolution is still wrong
 
 ## TectModel
 
