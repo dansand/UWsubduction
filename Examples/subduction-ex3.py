@@ -915,7 +915,7 @@ def set_boundary_vel_update(tectModel, platePair, time, dt):
 
 
 def strain_rate_field_update(tectModel, e, tmUwMap):
-    s#limit the search radius
+    dist = 100e3/sf.lengthScale #limit the search radius
     maskFn = tectModel.plate_boundary_mask_fn(dist, out='num',bound=e )
     srLocMins, srLocMaxs = strain_rate_min_max(tectModel, tmUwMap, maskFn)
     if tg.is_subduction_boundary(e):
@@ -1061,6 +1061,7 @@ viscSwarmVar.data[:] = viscosityMapFn.evaluate(swarm)
 store1 = glucifer.Store('output/subduction1')
 store2 = glucifer.Store('output/subduction2')
 store3 = glucifer.Store('output/subduction3')
+store4 = glucifer.Store('output/subduction4')
 
 
 figTemp = glucifer.Figure(store1, figsize=(960,300) )
@@ -1077,6 +1078,10 @@ figVel = glucifer.Figure( store3, figsize=(960,300) )
 figVel.append(glucifer.objects.Surface(mesh, fn.math.dot(velocityField, velocityField), onMesh=True))
 figVel.append( glucifer.objects.VectorArrows(mesh, velocityField, arrowHead=0.2, scaling=1./refVel) )
 
+figProx = glucifer.Figure(store4, figsize=(960,300) )
+figProx.append( glucifer.objects.Points(swarm , proximityVariable))
+for f in fCollection:
+    figProx.append( glucifer.objects.Points(f.swarm, pointSize=5))
 
 
 #figMask.append( glucifer.objects.Surface(mesh,  maskFnVar3) )
@@ -1177,10 +1182,12 @@ while step < maxSteps:
         store1.step = step
         store2.step = step
         store3.step = step
+        store4.step = step
+        
         figTemp.save(    outputPath + "temp"    + str(step).zfill(4))
         figVisc.save(    outputPath + "visc"    + str(step).zfill(4))
         figVel.save(    outputPath + "vel"    + str(step).zfill(4))
-        
+        figProx.save(    outputPath + "prox"    + str(step).zfill(4))
         #save out the surface velocity
         save_files(step)
     
