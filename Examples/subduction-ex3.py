@@ -65,10 +65,10 @@ from unsupported_dan.interfaces.smoothing2D import *
 from unsupported_dan.utilities.misc import cosine_taper
 
 
-# In[5]:
+# In[58]:
 
 
-ndp.maxDepth
+#ndp.rayleigh
 
 
 # In[6]:
@@ -85,7 +85,7 @@ import operator
 
 # ## Changes to base params
 
-# In[61]:
+# In[7]:
 
 
 #These will keep changing if the notebook is run again without restarting!
@@ -650,7 +650,7 @@ buoyancyMapFn = thermalDensityFn*gravity
 
 # ## Rheology
 
-# In[62]:
+# In[47]:
 
 
 symStrainrate = fn.tensor.symmetric( 
@@ -667,7 +667,7 @@ def safe_visc(func, viscmin=ndp.viscosityMin, viscmax=ndp.viscosityMax):
     return fn.misc.max(viscmin, fn.misc.min(viscmax, func))
 
 
-# In[63]:
+# In[59]:
 
 
 temperatureFn = temperatureField
@@ -740,13 +740,17 @@ interfaceViscosityFn = 0.5
 
 
 depthTaperFn = cosine_taper(depthFn, ndp.interfaceViscCutoffDepth, ndp.interfaceViscEndWidth)
-interfaceRheologyFn =  interfaceViscosityFn*(1. - depthTaperFn) + depthTaperFn*mantleRheologyFn
+#interfaceRheologyFn =  interfaceViscosityFn*(1. - depthTaperFn) + depthTaperFn*mantleRheologyFn
+
+interfaceRheologyFn =  interfaceViscosityFn*(1. - depthTaperFn) + depthTaperFn*mantleRheologyFn + faultTaperFunction*mantleRheologyFn,
 
 
-# In[64]:
+# In[57]:
 
 
-#ndp.viscosityMinInterface
+#fig = glucifer.Figure(figsize=(600, 300))
+#fig.append( glucifer.objects.Surface(tg.mesh,depthTaperFn , onMesh = True))
+#fig.show()
 
 
 # #use temperature field now
@@ -787,7 +791,7 @@ interfaceRheologyFn =  interfaceViscosityFn*(1. - depthTaperFn) + depthTaperFn*m
 # interfaceViscosityFn = fn.branching.conditional( ((depthFn < ndp.lowerMantleDepth, fn.misc.constant(0.5) + faultTaperFunction*mantleRheologyFn), 
 #                                            (depthFn > 2*ndp.faultThickness,                      fn.misc.constant(0.5))  ))
 
-# In[72]:
+# In[50]:
 
 
 #viscconds = ((proximityVariable == 0, mantleRheologyFn),
@@ -1145,7 +1149,7 @@ def valuesUpdateFn():
 
 # ## Viz
 
-# In[63]:
+# In[51]:
 
 
 outputPath = os.path.join(os.path.abspath("."),"output/")
@@ -1157,14 +1161,14 @@ if uw.rank()==0:
 uw.barrier()
 
 
-# In[65]:
+# In[52]:
 
 
 viscSwarmVar =  swarm.add_variable( dataType="double", count=1 )
 viscSwarmVar.data[:] = viscosityMapFn.evaluate(swarm)
 
 
-# In[73]:
+# In[53]:
 
 
 store1 = glucifer.Store('output/subduction1')
@@ -1199,7 +1203,7 @@ for f in fCollection:
 
 
 
-# In[75]:
+# In[54]:
 
 
 #figTemp.show()

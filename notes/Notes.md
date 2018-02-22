@@ -9,6 +9,8 @@
 * in ex1 ex2 the horizontal resolution is still wrong
 * ex2 is not properly safe yet - need to ran at 24 procs to catch the bug (need two rows of elements )
 * 1400 degree potential temp
+* Im using the constant 1. for the dimensionless diffusivity in the plate and slab creation routines. Kind of opaque.
+  ​
 
 ## TectModel
 
