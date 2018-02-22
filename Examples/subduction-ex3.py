@@ -23,13 +23,13 @@
 # 
 # 
 
-# In[15]:
+# In[1]:
 
 
 #!apt-cache policy petsc-dev
 
 
-# In[16]:
+# In[2]:
 
 
 #load in parent stuff
@@ -38,7 +38,7 @@ import nb_load_stuff
 from tectModelClass import *
 
 
-# In[17]:
+# In[3]:
 
 
 #If run through Docker we'll point at the local 'unsupported dir.'
@@ -53,7 +53,7 @@ except:
     pass
 
 
-# In[18]:
+# In[4]:
 
 
 #%load_ext autoreload
@@ -65,13 +65,13 @@ from unsupported_dan.interfaces.smoothing2D import *
 from unsupported_dan.utilities.misc import cosine_taper
 
 
-# In[19]:
+# In[5]:
 
 
 ndp.maxDepth
 
 
-# In[20]:
+# In[6]:
 
 
 import numpy as np
@@ -85,15 +85,15 @@ import operator
 
 # ## Changes to base params
 
-# In[21]:
+# In[7]:
 
 
 #These will keep changing if the notebook is run again without restarting!
 
 ndp.depth *= 1.2 #800 km
 ndp.faultThickness *= 1.5 #15 km
-ndp.interfaceViscCutoffDepth *= 1.5 #150 km
-ndp.maxDepth *= 1.5
+ndp.interfaceViscCutoffDepth *= 1.2 #
+#ndp.maxDepth *= 1.5
 md.res = 48
 #ndp.radiusOfCurv*=0.72  #~250 km
 md.nltol = 0.025
@@ -106,15 +106,15 @@ ndp.leftLim = -3000./2900
 ndp.rightLim = 3000./2900
 
 
-# In[22]:
+# In[11]:
 
 
-#dp.yieldStressMax
+#ndp.interfaceViscCutoffDepth
 
 
 # ## Build mesh, Stokes Variables
 
-# In[23]:
+# In[9]:
 
 
 #1200.*2.5, ndp.leftLim*2900
@@ -472,8 +472,8 @@ dummy = remove_faults_from_boundaries(tg, fCollection, faultRmfn )
 
 
 #xTfn = 
-faultLength = 200e3/sf.lengthScale
-faultTaper = 200e3/sf.lengthScale
+faultLength = 500e3/sf.lengthScale
+faultTaper = 500e3/sf.lengthScale
 
 subZoneDistfn = tg.subZoneAbsDistFn(upper=True)
 faultTaperFunction  = cosine_taper(subZoneDistfn, faultLength, faultTaper)
