@@ -95,7 +95,7 @@ ndp.faultThickness *= 1.5 #15 km
 ndp.interfaceViscCutoffDepth *= 1.2 #
 #ndp.maxDepth *= 1.5
 md.res = 48
-#ndp.radiusOfCurv*=0.72  #~250 km
+ndp.radiusOfCurv*=0.85  #~300 km
 md.nltol = 0.025
 md.ppc = 40
 #print(ndp.faultThickness*2900)
@@ -104,12 +104,16 @@ md.buoyancyFac = 1.25
 md.refineMeshStatic = True
 ndp.leftLim = -3000./2900
 ndp.rightLim = 3000./2900
+md.druckerAlpha = 1
 
 
-# In[11]:
+# In[24]:
 
 
-#ndp.interfaceViscCutoffDepth
+#ndp.yieldStressMax*sf.stress
+#dp.frictionMantle
+#md.druckerAlpha
+#dp.slabMaxAge
 
 
 # ## Build mesh, Stokes Variables
@@ -242,7 +246,7 @@ tg.add_left_boundary(1, plateInitAge=0., velocities=False)
 #tg.add_left_boundary(2, plateInitAge=0., velocities=False)
 
 #tg.add_ridge(1,2, -0.6, velocities=False)
-tg.add_subzone(1, 2, 0.2, subInitAge=ndp.slabMaxAge, upperInitAge=ndp.opMaxAge)
+tg.add_subzone(1, 2, ndp.subZoneLoc, subInitAge=ndp.slabMaxAge, upperInitAge=ndp.opMaxAge)
 
 tg.add_right_boundary(2, plateInitAge=0., velocities=False)
 
@@ -1180,8 +1184,6 @@ while step < maxSteps:
                                         1:interfaceViscosityFn} )
         #also update this guy for viz
         viscSwarmVar.data[:] = viscosityMapFn.evaluate(swarm)
-
-        
         valuesUpdateFn()
         
     #running fault healing/addition, map back to swarm
