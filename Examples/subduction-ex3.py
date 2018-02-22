@@ -476,8 +476,8 @@ dummy = remove_faults_from_boundaries(tg, fCollection, faultRmfn )
 
 
 #xTfn = 
-faultLength = 500e3/sf.lengthScale
-faultTaper = 500e3/sf.lengthScale
+faultLength = 300e3/sf.lengthScale
+faultTaper = 300e3/sf.lengthScale
 
 subZoneDistfn = tg.subZoneAbsDistFn(upper=True)
 faultTaperFunction  = cosine_taper(subZoneDistfn, faultLength, faultTaper)
@@ -1223,10 +1223,10 @@ for f in fCollection:
 
 time = 0.  # Initial time
 step = 0 
-maxSteps = 100      # Maximum timesteps 
-steps_output = 25   # output every N timesteps
+maxSteps = 1000      # Maximum timesteps 
+steps_output = 10   # output every N timesteps
 swarm_update = 10   # output every N timesteps
-faults_update = 2
+faults_update = 10
 dt_model = 0.
 steps_update_model = 10
 
