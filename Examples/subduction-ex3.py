@@ -242,13 +242,11 @@ tg.add_plate(2, velocities=False)
 # In[19]:
 
 
-tg.add_left_boundary(1, plateInitAge=0., velocities=False)
-#tg.add_left_boundary(2, plateInitAge=0., velocities=False)
+tg.add_left_boundary(1, plateInitAge=ndp.subZoneLoc, velocities=False)
 
-#tg.add_ridge(1,2, -0.6, velocities=False)
 tg.add_subzone(1, 2, ndp.subZoneLoc, subInitAge=ndp.slabMaxAge, upperInitAge=ndp.opMaxAge)
 
-tg.add_right_boundary(2, plateInitAge=0., velocities=False)
+tg.add_right_boundary(2, plateInitAge=ndp.opMaxAge, velocities=False)
 
 
 # ## Build plate age
@@ -590,19 +588,19 @@ vxId = bWalls & rWalls
 fixedVxNodes  = mesh.specialSets["Empty"]
 fixedVxNodes  += vxId
 
-velBC = uw.conditions.DirichletCondition( variable      = velocityField, 
-                                               indexSetsPerDof = (iWalls , jWalls) )
+#velBC = uw.conditions.DirichletCondition( variable      = velocityField, 
+#                                               indexSetsPerDof = (iWalls , jWalls) )
 
 
 ########
 #For open Sidewalls
 ########
 
-#velBC = uw.conditions.DirichletCondition( variable      = velocityField, 
-#                                               indexSetsPerDof = (fixedVxNodes, jWalls + iWalls) )
+velBC = uw.conditions.DirichletCondition( variable      = velocityField, 
+                                               indexSetsPerDof = (fixedVxNodes, jWalls + iWalls) )
 
-#r_sub = rWalls - bWalls
-#b_sub = bWalls - rWalls
+r_sub = rWalls - bWalls
+b_sub = bWalls - rWalls
 
 #note that b_sub is probably at the wrong loc herre, 
 #though becase I'm applying zero tractions there is actually no difference. 
@@ -611,9 +609,9 @@ velBC = uw.conditions.DirichletCondition( variable      = velocityField,
 #                                      indexSetsPerDof=(lWalls + b_sub + r_sub, None) )
 
 
-#nbc = uw.conditions.NeumannCondition( fn_flux=appliedTractionField, 
-#                                      variable=velocityField,
-#                                      indexSetsPerDof=(lWalls +  r_sub, None) )
+nbc = uw.conditions.NeumannCondition( fn_flux=appliedTractionField, 
+                                      variable=velocityField,
+                                      indexSetsPerDof=(lWalls +  r_sub, None) )
 
 
 # In[45]:
@@ -802,8 +800,15 @@ mantleRheologyFn =  safe_visc(mantleCreep*yielding/(mantleCreep + yielding), vis
 
 
 #Subduction interface viscosity, comprosing bothe vertical and horizontal conditions
-interfaceRheologyFn= fn.branching.conditional( ((depthFn < ndp.lowerMantleDepth, fn.misc.constant(0.5) + faultTaperFunction*mantleRheologyFn), 
-                                           (depthFn > 2*ndp.faultThickness,                      fn.misc.constant(0.5))  ))
+#interfaceRheologyFn= fn.branching.conditional( ((depthFn < ndp.lowerMantleDepth, fn.misc.constant(0.5) + faultTaperFunction*mantleRheologyFn), 
+#                                           (depthFn > 2*ndp.faultThickness,                      fn.misc.constant(0.5))  ))
+
+
+interfaceViscosityFn = 0.5
+depthTaperFn = cosine_taper(depthFn, ndp.interfaceViscCutoffDepth, ndp.interfaceViscEndWidth)
+#interfaceRheologyFn =  interfaceViscosityFn*(1. - depthTaperFn) + depthTaperFn*mantleRheologyFn
+
+interfaceRheologyFn =  interfaceViscosityFn*(1. - depthTaperFn) + depthTaperFn*mantleRheologyFn + faultTaperFunction*mantleRheologyFn,
 
 
 # In[54]:
@@ -855,8 +860,8 @@ def pressure_calibrate():
 
 stokes = uw.systems.Stokes( velocityField  = velocityField, 
                                    pressureField  = pressureField,
-                                   #conditions     = [velBC, nbc],
-                                   conditions     = [velBC, ],
+                                   conditions     = [velBC, nbc],
+                                   #conditions     = [velBC, ],
                                    fn_viscosity   = viscosityMapFn, 
                                    fn_bodyforce   = buoyancyMapFn )
 
