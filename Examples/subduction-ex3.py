@@ -65,7 +65,7 @@ from unsupported_dan.interfaces.smoothing2D import *
 from unsupported_dan.utilities.misc import cosine_taper
 
 
-# In[58]:
+# In[5]:
 
 
 #ndp.rayleigh
@@ -648,6 +648,13 @@ gravity = ( 0.0, -1.0 )
 buoyancyMapFn = thermalDensityFn*gravity
 
 
+# In[ ]:
+
+
+
+
+
+
 # ## Rheology
 
 # In[47]:
@@ -667,96 +674,13 @@ def safe_visc(func, viscmin=ndp.viscosityMin, viscmax=ndp.viscosityMax):
     return fn.misc.max(viscmin, fn.misc.min(viscmax, func))
 
 
-# In[59]:
+# In[48]:
 
 
-temperatureFn = temperatureField
-
-adiabaticCorrectFn = depthFn*ndp.tempGradMantle
-dynamicPressureProxyDepthFn = pressureField/sf.pressureDepthGrad
-druckerDepthFn = fn.misc.max(0.0, depthFn + md.druckerAlpha*(dynamicPressureProxyDepthFn))
-
-#Diffusion Creep
-diffusionUM = (1./ndp.diffusionPreExp)*            fn.math.exp( ((ndp.diffusionEnergy + (depthFn*ndp.diffusionVolume))/((temperatureFn+ adiabaticCorrectFn + ndp.surfaceTemp))))
-
-diffusionLM = ndp.lowerMantleViscFac*(1./ndp.lowerMantlePreExp)*            fn.math.exp( ((ndp.lowerMantleEnergy + (depthFn*ndp.lowerMantleVolume))/((temperatureFn+ adiabaticCorrectFn + ndp.surfaceTemp))))
-
-viscosityLM = safe_visc(diffusionLM)
-
-#Add non-linearity
-viscosityUM0 = safe_visc(diffusionUM)
-
-if md.powerLaw:
-    powerLawSRFn= ((strainRate_2ndInvariant+ 1e-15)/ndp.powerLawStrain)**((1.-ndp.powerLawExp)/ndp.powerLawExp)
-    viscPower = viscosityUM0*powerLawSRFn
-    effviscosity = viscPower*viscosityUM0/(viscPower + viscosityUM0) #then combine harmonically
-    viscosityUM = safe_visc(effviscosity)
-
-else:
-    viscosityUM = viscosityUM0
-    
-#combine upper an lower mantle   
-mantleCreep = fn.branching.conditional( ((depthFn < ndp.lowerMantleDepth, viscosityUM ), 
-                                           (True,                      diffusionLM )  ))
+#md.viscCombine
 
 
-#Define the mantle Plasticity
-ys =  ndp.cohesionMantle + (druckerDepthFn*ndp.frictionMantle)
-ysf = fn.misc.min(ys, ndp.yieldStressMax)
-yielding = ysf/(2.*(strainRate_2ndInvariant) + 1e-15) 
-
-
-if md.viscCombine == 0:
-    mantleRheologyFn = safe_visc(fn.misc.min(mantleCreep, yielding), viscmin=ndp.viscosityMin, viscmax=ndp.viscosityMax)
-else:
-    mantleRheologyFn =  safe_visc(mantleCreep*yielding/(mantleCreep + yielding), viscmin=ndp.viscosityMin, viscmax=ndp.viscosityMax)
-    
-    
-normDepths = depthFn/ndp.refDepthInterface
-interfaceCreep = ndp.refViscInterface*fn.math.exp(ndp.logDelVisc*(1. - normDepths) )
-#interfaceCreep = safe_visc(interfaceCreep0, viscmin=ndp.viscosityMinInterface, viscmax= ndp.viscosityMaxInterface)
-
-#we want these avail. in all cases, as we evaluate it.
-#interfaceys =  ndp.cohesionInterface + (druckerFaultDepthFn*ndp.frictionInterface)
-#interfaceysf = fn.misc.min(interfaceys, ndp.ysMaxInterface)
-
-
-interfaceViscosityFn = 0.5
-    
-
-#elif md.plasticInterface: #pseudo-brittle interface
-#    interfaceYielding = interfaceysf/(2.*(strainRate_2ndInvariant) + 1e-15)
-#    #combine
-#    interfaceViscosityFn = safe_visc(fn.misc.min(interfaceCreep , interfaceYielding), viscmin=ndp.viscosityMinInterface, viscmax=ndp.viscosityMaxInterface)
-
-
-#else: # a linear, brittle equivalent visc implementation
-#    ndp.effStrainRate = ndp.subVelocity/ndp.faultThickness
-#    effStressUpper =  ndp.cohesionInterface + (depthFn*ndp.frictionInterface)
-#    interfaceYielding = effStressUpper/(2.*ndp.effStrainRate)
-#    #combine
-#    interfaceViscosityFn = safe_visc(fn.misc.min(interfaceCreep , interfaceYielding), viscmin=ndp.viscosityMinInterface, viscmax=ndp.viscosityMaxInterface)
-
-
-
-depthTaperFn = cosine_taper(depthFn, ndp.interfaceViscCutoffDepth, ndp.interfaceViscEndWidth)
-#interfaceRheologyFn =  interfaceViscosityFn*(1. - depthTaperFn) + depthTaperFn*mantleRheologyFn
-
-interfaceRheologyFn =  interfaceViscosityFn*(1. - depthTaperFn) + depthTaperFn*mantleRheologyFn + faultTaperFunction*mantleRheologyFn,
-
-
-# In[57]:
-
-
-#fig = glucifer.Figure(figsize=(600, 300))
-#fig.append( glucifer.objects.Surface(tg.mesh,depthTaperFn , onMesh = True))
-#fig.show()
-
-
-# #use temperature field now
-# #temperatureFn = proxyTempVariable
 # temperatureFn = temperatureField
-# 
 # 
 # adiabaticCorrectFn = depthFn*ndp.tempGradMantle
 # dynamicPressureProxyDepthFn = pressureField/sf.pressureDepthGrad
@@ -764,19 +688,29 @@ interfaceRheologyFn =  interfaceViscosityFn*(1. - depthTaperFn) + depthTaperFn*m
 # 
 # #Diffusion Creep
 # diffusionUM = (1./ndp.diffusionPreExp)*\
-#     fn.math.exp( ((ndp.diffusionEnergy + (depthFn*ndp.diffusionVolume))/((temperatureFn+ adiabaticCorrectFn + ndp.surfaceTemp))))
+#             fn.math.exp( ((ndp.diffusionEnergy + (depthFn*ndp.diffusionVolume))/((temperatureFn+ adiabaticCorrectFn + ndp.surfaceTemp))))
 # 
-# diffusionUM =     safe_visc(diffusionUM)
-#     
 # diffusionLM = ndp.lowerMantleViscFac*(1./ndp.lowerMantlePreExp)*\
 #             fn.math.exp( ((ndp.lowerMantleEnergy + (depthFn*ndp.lowerMantleVolume))/((temperatureFn+ adiabaticCorrectFn + ndp.surfaceTemp))))
 # 
-# diffusionLM =     safe_visc(diffusionLM)
+# viscosityLM = safe_visc(diffusionLM)
 # 
+# #Add non-linearity
+# viscosityUM0 = safe_visc(diffusionUM)
+# 
+# if md.powerLaw:
+#     powerLawSRFn= ((strainRate_2ndInvariant+ 1e-15)/ndp.powerLawStrain)**((1.-ndp.powerLawExp)/ndp.powerLawExp)
+#     viscPower = viscosityUM0*powerLawSRFn
+#     effviscosity = viscPower*viscosityUM0/(viscPower + viscosityUM0) #then combine harmonically
+#     viscosityUM = safe_visc(effviscosity)
+# 
+# else:
+#     viscosityUM = viscosityUM0
 #     
-# #combine upper and lower mantle   
-# mantleCreep = fn.branching.conditional( ((depthFn < ndp.lowerMantleDepth, diffusionUM ), 
+# #combine upper an lower mantle   
+# mantleCreep = fn.branching.conditional( ((depthFn < ndp.lowerMantleDepth, viscosityUM ), 
 #                                            (True,                      diffusionLM )  ))
+# 
 # 
 # #Define the mantle Plasticity
 # ys =  ndp.cohesionMantle + (druckerDepthFn*ndp.frictionMantle)
@@ -784,14 +718,95 @@ interfaceRheologyFn =  interfaceViscosityFn*(1. - depthTaperFn) + depthTaperFn*m
 # yielding = ysf/(2.*(strainRate_2ndInvariant) + 1e-15) 
 # 
 # 
-# mantleRheologyFn = safe_visc(fn.misc.min(mantleCreep, yielding), viscmin=ndp.viscosityMin, viscmax=ndp.viscosityMax)
+# if md.viscCombine == 0:
+#     mantleRheologyFn = safe_visc(fn.misc.min(mantleCreep, yielding), viscmin=ndp.viscosityMin, viscmax=ndp.viscosityMax)
+# else:
+#     mantleRheologyFn =  safe_visc(mantleCreep*yielding/(mantleCreep + yielding), viscmin=ndp.viscosityMin, viscmax=ndp.viscosityMax)
+#     
+#     
+# normDepths = depthFn/ndp.refDepthInterface
+# interfaceCreep = ndp.refViscInterface*fn.math.exp(ndp.logDelVisc*(1. - normDepths) )
+# #interfaceCreep = safe_visc(interfaceCreep0, viscmin=ndp.viscosityMinInterface, viscmax= ndp.viscosityMaxInterface)
+# 
+# #we want these avail. in all cases, as we evaluate it.
+# #interfaceys =  ndp.cohesionInterface + (druckerFaultDepthFn*ndp.frictionInterface)
+# #interfaceysf = fn.misc.min(interfaceys, ndp.ysMaxInterface)
 # 
 # 
-# #Subduction interface viscosity, comprosing bothe vertical and horizontal conditions
-# interfaceViscosityFn = fn.branching.conditional( ((depthFn < ndp.lowerMantleDepth, fn.misc.constant(0.5) + faultTaperFunction*mantleRheologyFn), 
-#                                            (depthFn > 2*ndp.faultThickness,                      fn.misc.constant(0.5))  ))
+# interfaceViscosityFn = 0.5
+#     
+# 
+# #elif md.plasticInterface: #pseudo-brittle interface
+# #    interfaceYielding = interfaceysf/(2.*(strainRate_2ndInvariant) + 1e-15)
+# #    #combine
+# #    interfaceViscosityFn = safe_visc(fn.misc.min(interfaceCreep , interfaceYielding), viscmin=ndp.viscosityMinInterface, viscmax=ndp.viscosityMaxInterface)
+# 
+# 
+# #else: # a linear, brittle equivalent visc implementation
+# #    ndp.effStrainRate = ndp.subVelocity/ndp.faultThickness
+# #    effStressUpper =  ndp.cohesionInterface + (depthFn*ndp.frictionInterface)
+# #    interfaceYielding = effStressUpper/(2.*ndp.effStrainRate)
+# #    #combine
+# #    interfaceViscosityFn = safe_visc(fn.misc.min(interfaceCreep , interfaceYielding), viscmin=ndp.viscosityMinInterface, viscmax=ndp.viscosityMaxInterface)
+# 
+# 
+# 
+# depthTaperFn = cosine_taper(depthFn, ndp.interfaceViscCutoffDepth, ndp.interfaceViscEndWidth)
+# #interfaceRheologyFn =  interfaceViscosityFn*(1. - depthTaperFn) + depthTaperFn*mantleRheologyFn
+# 
+# interfaceRheologyFn =  interfaceViscosityFn*(1. - depthTaperFn) + depthTaperFn*mantleRheologyFn + faultTaperFunction*mantleRheologyFn,
 
 # In[50]:
+
+
+
+#fig = glucifer.Figure(figsize=(600, 300))
+#fig.append( glucifer.objects.Surface(tg.mesh,depthTaperFn , onMesh = True))
+#fig.show()
+
+
+# In[53]:
+
+
+#use temperature field now
+#temperatureFn = proxyTempVariable
+temperatureFn = temperatureField
+
+
+adiabaticCorrectFn = depthFn*ndp.tempGradMantle
+dynamicPressureProxyDepthFn = pressureField/sf.pressureDepthGrad
+druckerDepthFn = fn.misc.max(0.0, depthFn + md.druckerAlpha*(dynamicPressureProxyDepthFn))
+
+#Diffusion Creep
+diffusionUM = (1./ndp.diffusionPreExp)*    fn.math.exp( ((ndp.diffusionEnergy + (depthFn*ndp.diffusionVolume))/((temperatureFn+ adiabaticCorrectFn + ndp.surfaceTemp))))
+
+diffusionUM =     safe_visc(diffusionUM)
+    
+diffusionLM = ndp.lowerMantleViscFac*(1./ndp.lowerMantlePreExp)*            fn.math.exp( ((ndp.lowerMantleEnergy + (depthFn*ndp.lowerMantleVolume))/((temperatureFn+ adiabaticCorrectFn + ndp.surfaceTemp))))
+
+diffusionLM =     safe_visc(diffusionLM)
+
+    
+#combine upper and lower mantle   
+mantleCreep = fn.branching.conditional( ((depthFn < ndp.lowerMantleDepth, diffusionUM ), 
+                                           (True,                      diffusionLM )  ))
+
+#Define the mantle Plasticity
+ys =  ndp.cohesionMantle + (druckerDepthFn*ndp.frictionMantle)
+ysf = fn.misc.min(ys, ndp.yieldStressMax)
+yielding = ysf/(2.*(strainRate_2ndInvariant) + 1e-15) 
+
+
+#mantleRheologyFn = safe_visc(fn.misc.min(mantleCreep, yielding), viscmin=ndp.viscosityMin, viscmax=ndp.viscosityMax)
+mantleRheologyFn =  safe_visc(mantleCreep*yielding/(mantleCreep + yielding), viscmin=ndp.viscosityMin, viscmax=ndp.viscosityMax)
+
+
+#Subduction interface viscosity, comprosing bothe vertical and horizontal conditions
+interfaceRheologyFn= fn.branching.conditional( ((depthFn < ndp.lowerMantleDepth, fn.misc.constant(0.5) + faultTaperFunction*mantleRheologyFn), 
+                                           (depthFn > 2*ndp.faultThickness,                      fn.misc.constant(0.5))  ))
+
+
+# In[54]:
 
 
 #viscconds = ((proximityVariable == 0, mantleRheologyFn),
@@ -808,7 +823,7 @@ viscosityMapFn = fn.branching.map( fn_key = proximityVariable,
 
 # ## Stokes
 
-# In[73]:
+# In[55]:
 
 
 surfaceArea = uw.utils.Integral(fn=1.0,mesh=mesh, integrationType='surface', surfaceIndexSet=tWalls)
@@ -835,7 +850,7 @@ def pressure_calibrate():
     smooth_pressure(mesh)
 
 
-# In[74]:
+# In[56]:
 
 
 stokes = uw.systems.Stokes( velocityField  = velocityField, 
@@ -985,15 +1000,15 @@ if uw.rank()==0:
 uw.barrier()
 
 
-surfacexs = mesh.data[tWalls.data][:,0]
-surfaceys = mesh.data[tWalls.data][:,1]
-surfLine = markerLine2D(mesh, velocityField,surfacexs, surfaceys , 0,  99)
-surfVx = uw.swarm.SwarmVariable(surfLine.swarm, 'double', 1)
+#surfacexs = mesh.data[tWalls.data][:,0]
+#surfaceys = mesh.data[tWalls.data][:,1]
+#surfLine = markerLine2D(mesh, velocityField,surfacexs, surfaceys , 0,  99)
+#surfVx = uw.swarm.SwarmVariable(surfLine.swarm, 'double', 1)
 
-def save_files(step):
-    surfVx.data[:] = velocityField[0].evaluate(surfLine.swarm)
+#def save_files(step):
+#    surfVx.data[:] = velocityField[0].evaluate(surfLine.swarm)
     
-    surfVx.save( "output/files/surfVx_" + str(step).zfill(3) + "_.h5")
+#    surfVx.save( "output/files/surfVx_" + str(step).zfill(3) + "_.h5")
 
 
 # In[57]:
@@ -1300,7 +1315,7 @@ while step < maxSteps:
         figVel.save(    outputPath + "vel"    + str(step).zfill(4))
         figProx.save(    outputPath + "prox"    + str(step).zfill(4))
         #save out the surface velocity
-        save_files(step)
+        #save_files(step)
     
     if uw.rank()==0:
         print 'step = {0:6d}; time = {1:.3e}'.format(step,time)
