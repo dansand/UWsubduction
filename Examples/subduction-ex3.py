@@ -242,11 +242,13 @@ tg.add_plate(2, velocities=False)
 # In[19]:
 
 
-tg.add_left_boundary(1, plateInitAge=ndp.subZoneLoc, velocities=False)
+tg.add_left_boundary(1, plateInitAge=0., velocities=False)
+#tg.add_left_boundary(2, plateInitAge=0., velocities=False)
 
+#tg.add_ridge(1,2, -0.6, velocities=False)
 tg.add_subzone(1, 2, ndp.subZoneLoc, subInitAge=ndp.slabMaxAge, upperInitAge=ndp.opMaxAge)
 
-tg.add_right_boundary(2, plateInitAge=ndp.opMaxAge, velocities=False)
+tg.add_right_boundary(2, plateInitAge=0., velocities=False)
 
 
 # ## Build plate age
@@ -556,12 +558,6 @@ lWalls = mesh.specialSets["MinI_VertexSet"]
 rWalls = mesh.specialSets["MaxI_VertexSet"]
 
 
-# In[ ]:
-
-
-
-
-
 # In[43]:
 
 
@@ -618,16 +614,16 @@ nbc = uw.conditions.NeumannCondition( fn_flux=appliedTractionField,
 
 
 #Ridges Temp not enforced
-#dirichTempBC = uw.conditions.DirichletCondition(     variable=temperatureField, 
-#                                              indexSetsPerDof=(tWalls,) )
+dirichTempBC = uw.conditions.DirichletCondition(     variable=temperatureField, 
+                                              indexSetsPerDof=(tWalls,) )
 
 #Ridges enforced
-dirichTempBC = uw.conditions.DirichletCondition(     variable=temperatureField, 
-                                              indexSetsPerDof=(tWalls + iWalls,) )
+#dirichTempBC = uw.conditions.DirichletCondition(     variable=temperatureField, 
+#                                              indexSetsPerDof=(tWalls + iWalls,) )
 
 
 ###If we want thermal ridges fixed
-temperatureField.data[iWalls.data] = 1.
+#temperatureField.data[iWalls.data] = 1.
 
 
 # ## Bouyancy
