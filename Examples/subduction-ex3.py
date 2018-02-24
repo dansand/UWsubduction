@@ -283,11 +283,11 @@ plateTempProxFn = fn.branching.conditional( ((depthFn > platethickness, ndp.pote
 
 
 
-# In[79]:
+# In[114]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
-#fig.append( glucifer.objects.Surface(tg.mesh, plateTempProxFn, onMesh = True))
+#fig.append( glucifer.objects.Surface(tg.mesh, depthTaperFn, onMesh = True))
 #fig.show()
 
 
@@ -1277,11 +1277,12 @@ while step < maxSteps:
         faultRmfn, faultAddFn, faultTaperFunction = rebuild_mask_fns()
         
         #these need to be explicity updated
-        interfaceViscosityFn = fn.misc.constant(0.5) + faultTaperFunction*mantleRheologyFn
+        #interfaceViscosityFn = fn.misc.constant(0.5) + faultTaperFunction*mantleRheologyFn
+        interfaceRheologyFn =  interfaceViscosityFn*(1. - depthTaperFn) + depthTaperFn*mantleRheologyFn + faultTaperFunction*mantleRheologyFn
         
         viscosityMapFn = fn.branching.map( fn_key = proximityVariable,
                              mapping = {0:mantleRheologyFn,
-                                        1:interfaceViscosityFn} )
+                                        1:interfaceRheologyFn} )
         #also update this guy for viz
         viscSwarmVar.data[:] = viscosityMapFn.evaluate(swarm)
         valuesUpdateFn()
