@@ -29,7 +29,7 @@
 #!apt-cache policy petsc-dev
 
 
-# In[2]:
+# In[1]:
 
 
 import numpy as np
@@ -40,8 +40,10 @@ from easydict import EasyDict as edict
 import networkx as nx
 import operator
 
+import warnings; warnings.simplefilter('ignore')
 
-# In[3]:
+
+# In[2]:
 
 
 #load in parent stuff
@@ -50,7 +52,7 @@ import nb_load_stuff
 from tectModelClass import *
 
 
-# In[4]:
+# In[3]:
 
 
 #If run through Docker we'll point at the local 'unsupported dir.'
@@ -65,10 +67,11 @@ except:
     pass
 
 
-# In[5]:
+# In[4]:
 
 
 #%load_ext autoreload
+
 
 #from unsupported_dan.UWsubduction.base_params import *
 from unsupported_dan.UWsubduction.subduction_utils import *
@@ -77,10 +80,11 @@ from unsupported_dan.interfaces.smoothing2D import *
 from unsupported_dan.utilities.misc import cosine_taper
 
 
-# In[6]:
+# In[5]:
 
 
 #import dimensionless parameters, model settings, unit registry, scaling system
+
 from unsupported_dan.UWsubduction.minimal_example import paramDict, modelDict, UnitRegistry, sub_scaling
 from unsupported_dan.UWsubduction.minimal_example import rayleighNumber, stressScale, pressureDepthGrad
 
@@ -96,15 +100,9 @@ ndimlz = sca.nonDimensionalize
 assert ndimlz(2900*ur.kilometer) == 1.0
 
 
-# In[7]:
-
-
-#modelDict
-
-
 # ## Changes to base params
 
-# In[8]:
+# In[7]:
 
 
 #These will keep changing if the notebook is run again without restarting!
@@ -114,7 +112,7 @@ md.res = 64
 
 # ## Build mesh, Stokes Variables
 
-# In[9]:
+# In[8]:
 
 
 yres = int(md.res)
@@ -146,7 +144,7 @@ temperatureField.data[:] = 0.
 temperatureDotField.data[:] = 0.
 
 
-# In[10]:
+# In[9]:
 
 
 if md.refineMesh:
@@ -169,7 +167,7 @@ if md.refineMesh:
     mesh._minCoord = (mesh._minCoord[0], 1.0 - md.depth)
 
 
-# In[11]:
+# In[10]:
 
 
 #figMesh = glucifer.Figure()
@@ -178,7 +176,7 @@ if md.refineMesh:
 #figMesh.save_database('test.gldb')
 
 
-# In[12]:
+# In[11]:
 
 
 #assert np.allclose(mesh.maxCoord[1], mesh.data[:,1].max())
@@ -186,7 +184,7 @@ if md.refineMesh:
 
 # ## Build plate model
 
-# In[15]:
+# In[12]:
 
 
 endTime = ndimlz(30*ur.megayear)
@@ -194,7 +192,7 @@ refVel = ndimlz(2*ur.cm/ur.year)
 plateModelDt = ndimlz(0.1*ur.megayear)
 
 
-# In[16]:
+# In[13]:
 
 
 #Create tectonic model, add plates
@@ -210,7 +208,7 @@ tm.add_right_boundary(2, plateInitAge=0., velocities=False)
 
 # 
 # 
-# ## Build plate age
+# ## Build plate age / temp Fns
 
 # In[17]:
 
@@ -317,6 +315,18 @@ fnJointTemp = fn.misc.min(proxyTempVariable,plateTempProxFn)
 proxyTempVariable.data[:] = fnJointTemp.evaluate(swarm)
 
 
+# In[ ]:
+
+
+#Finally, build the "proximity", i.e. the region immediately around the fault 
+
+proximityVariable.data[:] = 0
+
+for f in fCollection:
+    f.rebuild()
+    f.set_proximity_director(swarm, proximityVariable, searchFac = 2., locFac=1.0)
+
+
 # In[24]:
 
 
@@ -355,7 +365,6 @@ projectorMeshTemp.solve()
 
 
 # Setup a swarm to define the replacment positions
-
 fThick= fCollection[0].thickness
 
 faultloc = 1. - md.faultThickness*md.faultLocFac
@@ -423,25 +432,9 @@ dummy = remove_faults_from_boundaries(tm, fCollection, faultRmfn )
 #fig.show()
 
 
-# ## Interface rheology domain
-
 # ## Proximity
 # 
 # 
-
-# In[32]:
-
-
-proximityVariable.data[:] = 0
-
-
-# In[33]:
-
-
-for f in fCollection:
-    f.rebuild()
-    f.set_proximity_director(swarm, proximityVariable, searchFac = 2., locFac=1.0)
-
 
 # In[34]:
 
@@ -959,7 +952,9 @@ def rebuild_mask_fns():
     
     #the following dictates where the fault rheology will be activated
     subZoneDistfn = tm.subZoneAbsDistFn(upper=True)
-    faultHorizTaperFn  = cosine_taper(subZoneDistfn, faultLength, faultTaper)
+    
+    faultHorizTaperFn  = cosine_taper(subZoneDistfn, 
+                                  md.interfaceViscHorizTaperStart, md.interfaceViscHorizTaperWidth)
     
     return faultRmfn, faultAddFn, faultHorizTaperFn
     
