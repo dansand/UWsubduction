@@ -84,7 +84,7 @@ uw.barrier()
 # * For more information see, `UWsubduction/Background/scaling`
 # 
 
-# In[9]:
+# In[7]:
 
 
 #import parameters, model settings, unit registry, scaling system, etc
@@ -111,14 +111,14 @@ md.res = 48
 
 # ## Build / refine mesh, Stokes Variables
 
-# In[10]:
+# In[8]:
 
 
 #(ndp.rightLim - ndp.leftLim)/ndp.depth
 #md.res = 64
 
 
-# In[11]:
+# In[9]:
 
 
 yres = int(md.res)
@@ -142,7 +142,7 @@ velocityField.data[:] = 0.
 pressureField.data[:] = 0.
 
 
-# In[12]:
+# In[10]:
 
 
 #mesh.reset() #call to reset mesh nodes to original locations
@@ -168,7 +168,7 @@ if md.refineVert:
 
 # ## Build plate model
 
-# In[13]:
+# In[11]:
 
 
 
@@ -177,7 +177,7 @@ refVel = ndimlz(2*ur.cm/ur.year)
 plateModelDt = ndimlz(0.1*ur.megayear)
 
 
-# In[14]:
+# In[12]:
 
 
 #velocities of the plates (1 - 3) ams well as the plate boundary (1,2)
@@ -188,7 +188,7 @@ vp3= ndimlz(-2.*ur.centimeter/ur.year )
 vb12= ndimlz(0.5*ur.centimeter/ur.year )
 
 
-# In[15]:
+# In[13]:
 
 
 print(vp1, vp2, vp3, vb12)
@@ -365,7 +365,7 @@ proxyTempVariable.data[:] = fnJointTemp.evaluate(swarm)
 # 
 # In this section we setup some functions to help manage the spatial distribution of faults
 
-# In[75]:
+# In[27]:
 
 
 # Setup a swarm to define the replacment positions
@@ -431,14 +431,14 @@ velMaskFn = operator.and_( velMask1,  velMask2)
 #dummy = remove_faults_from_boundaries(tm, fCollection, faultRmfn )
 
 
-# In[77]:
+# In[28]:
 
 
 #maskFn_ = tm.t2f(faultRmfn)
 #pIdFn = tm.plate_id_fn(maskFn=maskFn_)
 
 
-# In[81]:
+# In[29]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
@@ -450,13 +450,13 @@ velMaskFn = operator.and_( velMask1,  velMask2)
 # 
 # 
 
-# In[32]:
+# In[30]:
 
 
 proximityVariable.data[:] = 0
 
 
-# In[33]:
+# In[31]:
 
 
 for f in fCollection:
@@ -464,13 +464,13 @@ for f in fCollection:
     f.set_proximity_director(swarm, proximityVariable, searchFac = 2., locFac=1.0)
 
 
-# In[34]:
+# In[32]:
 
 
 #update_faults()
 
 
-# In[35]:
+# In[33]:
 
 
 #figProx = glucifer.Figure(figsize=(960,300) )
@@ -485,7 +485,7 @@ for f in fCollection:
 #figProx.save_database('test.gldb')
 
 
-# In[36]:
+# In[34]:
 
 
 #testMM = fn.view.min_max(uw.function.input(f.swarm.particleCoordinates))
@@ -494,7 +494,7 @@ for f in fCollection:
 
 # ## Prescribed velocity
 
-# In[37]:
+# In[35]:
 
 
 def set_vel_return_nodes(time, maskFn):
@@ -520,13 +520,13 @@ def set_vel_return_nodes(time, maskFn):
     
 
 
-# In[38]:
+# In[36]:
 
 
 vXnodes = set_vel_return_nodes(0., velMaskFn)
 
 
-# In[39]:
+# In[37]:
 
 
 #check
@@ -542,7 +542,7 @@ vXnodes = set_vel_return_nodes(0., velMaskFn)
 
 # ## Boundary conditions
 
-# In[40]:
+# In[38]:
 
 
 iWalls = mesh.specialSets["MinI_VertexSet"] + mesh.specialSets["MaxI_VertexSet"]
@@ -556,13 +556,13 @@ bWalls = mesh.specialSets["MinJ_VertexSet"]
 #                                           indexSetsPerDof = (iWalls, jWalls) )
 
 
-# In[41]:
+# In[39]:
 
 
 #vXnodes
 
 
-# In[42]:
+# In[40]:
 
 
 def build_velBcs(nodes):
@@ -578,13 +578,13 @@ def build_velBcs(nodes):
     return velBC
 
 
-# In[43]:
+# In[41]:
 
 
 velBC = build_velBcs(vXnodes)
 
 
-# In[44]:
+# In[42]:
 
 
 #vXnodes
@@ -592,7 +592,7 @@ velBC = build_velBcs(vXnodes)
 
 # ## Bouyancy
 
-# In[45]:
+# In[43]:
 
 
 # Now create a buoyancy force vector using the density and the vertical unit vector. 
@@ -605,7 +605,7 @@ buoyancyMapFn = thermalDensityFn*gravity
 
 # ## Rheology
 
-# In[46]:
+# In[44]:
 
 
 symStrainrate = fn.tensor.symmetric( 
@@ -622,7 +622,7 @@ def safe_visc(func, viscmin=md.viscosityMin, viscmax=md.viscosityMax):
     return fn.misc.max(viscmin, fn.misc.min(viscmax, func))
 
 
-# In[47]:
+# In[45]:
 
 
 #Interface rheology extent
@@ -636,7 +636,7 @@ faultDepthTaperFn = cosine_taper(depthFn,
                                  md.faultViscDepthTaperStart, md.faultViscDepthTaperWidth)
 
 
-# In[48]:
+# In[46]:
 
 
 #temperatureField, 
@@ -645,7 +645,7 @@ ndp.diffusionPreExp, ndp.diffusionVolumeDepth, ndp.diffusionEnergyDepth, ndp.sur
 #(1./ndp.diffusionPreExp)
 
 
-# In[53]:
+# In[47]:
 
 
 temperatureFn = proxyTempVariable
@@ -684,7 +684,7 @@ faultViscosityFn = ndp.viscosityFault
 faultRheologyFn =  faultViscosityFn*(1. - faultDepthTaperFn) +                         faultDepthTaperFn*mantleRheologyFn + faultHorizTaperFn*mantleRheologyFn
 
 
-# In[54]:
+# In[48]:
 
 
 #viscconds = ((proximityVariable == 0, mantleRheologyFn),
@@ -699,7 +699,7 @@ viscosityMapFn = fn.branching.map( fn_key = proximityVariable,
                                         2:faultRheologyFn} )
 
 
-# In[63]:
+# In[49]:
 
 
 #fig2 = glucifer.Figure(figsize=(960,300) )
@@ -711,7 +711,7 @@ viscosityMapFn = fn.branching.map( fn_key = proximityVariable,
 
 # ## Stokes
 
-# In[58]:
+# In[50]:
 
 
 surfaceArea = uw.utils.Integral(fn=1.0,mesh=mesh, integrationType='surface', surfaceIndexSet=tWalls)
@@ -738,7 +738,7 @@ def pressure_calibrate():
     smooth_pressure(mesh)
 
 
-# In[59]:
+# In[66]:
 
 
 stokes = uw.systems.Stokes( velocityField  = velocityField, 
@@ -784,7 +784,7 @@ population_control = uw.swarm.PopulationControl(swarm, deleteThreshold=0.006,
 
 # ## Update functions
 
-# In[ ]:
+# In[51]:
 
 
 valuesDict = edict({})
@@ -795,7 +795,7 @@ for e in tm.undirected.edges():
 valuesDict  
 
 
-# In[64]:
+# In[52]:
 
 
 # Here we'll handle everything that should be advected - i.e. every timestep
@@ -813,14 +813,14 @@ def advect_update():
     return dt, time+dt, step+1
 
 
-# In[65]:
+# In[53]:
 
 
 #velocityField.data[:] = 0.
 #pressureField.data[:] = 0.
 
 
-# In[66]:
+# In[54]:
 
 
 def update_stokes(time, viscosityMapFn ):
@@ -849,7 +849,7 @@ def update_stokes(time, viscosityMapFn ):
     return stokes
 
 
-# In[67]:
+# In[55]:
 
 
 def rebuild_solver(stokes):
@@ -863,7 +863,7 @@ def rebuild_solver(stokes):
     return solver
 
 
-# In[82]:
+# In[56]:
 
 
 def update_faults():
@@ -887,7 +887,7 @@ def update_faults():
     
 
 
-# In[72]:
+# In[57]:
 
 
 def update_swarm():
@@ -905,7 +905,7 @@ def update_swarm():
     
 
 
-# In[74]:
+# In[58]:
 
 
 outputPath = os.path.join(os.path.abspath("."),"output/files")
@@ -927,7 +927,7 @@ def save_files(step):
     surfVx.save( "output/files/surfVx_" + str(step).zfill(3) + "_.h5")
 
 
-# In[60]:
+# In[59]:
 
 
 def update_tect_model(tectModel, tmUwMap, time, dt = 0.0 ):
@@ -952,6 +952,12 @@ def update_tect_model(tectModel, tmUwMap, time, dt = 0.0 ):
             tectModel.set_bound_loc(e, newx)
         else:
             pass
+
+
+# In[81]:
+
+
+#update_tect_model(tm, tmUwMap, 0., dt = 0.1 )
 
 
 # In[ ]:
@@ -1212,4 +1218,10 @@ while time < tm.times[-1] and step < maxSteps:
     
     if uw.rank()==0:
         print 'step = {0:6d}; time = {1:.3e}'.format(step,time)
+
+
+# In[88]:
+
+
+#tm.is_ridge((3,3))
 
