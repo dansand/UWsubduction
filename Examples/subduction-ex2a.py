@@ -523,15 +523,14 @@ def set_vel_return_nodes(time, maskFn):
 # In[101]:
 
 
-vXnodes = set_vel_return_nodes(0., velMaskFn)
+#vXnodes = set_vel_return_nodes(0., velMaskFn)
 
 
-# In[116]:
+# In[119]:
 
 
 #np.empty(0), 
-test = tm.mesh.specialSets['MaxJ_VertexSet']
-test.data.shape
+#test = tm.mesh.specialSets['MaxJ_VertexSet']data.shape
 
 
 # In[37]:
