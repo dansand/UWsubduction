@@ -12,13 +12,13 @@
 # 
 # * complete velBCs versus partial velBCs
 
-# In[1]:
+# In[66]:
 
 
 #!apt-cache policy petsc-dev
 
 
-# In[2]:
+# In[67]:
 
 
 import numpy as np
@@ -32,7 +32,7 @@ import operator
 import warnings; warnings.simplefilter('ignore')
 
 
-# In[3]:
+# In[68]:
 
 
 #load in parent stuff
@@ -41,7 +41,7 @@ import nb_load_stuff
 from tectModelClass import *
 
 
-# In[4]:
+# In[69]:
 
 
 #If run through Docker we'll point at the local 'unsupported dir.'
@@ -56,7 +56,7 @@ except:
     pass
 
 
-# In[5]:
+# In[70]:
 
 
 from unsupported_dan.UWsubduction.subduction_utils import *
@@ -67,7 +67,7 @@ from unsupported_dan.interfaces.interface2D import interface2D , interface_colle
 
 # ## Create output dir structure
 
-# In[6]:
+# In[71]:
 
 
 #outputPath = os.path.join(os.path.abspath("."),"output/")
@@ -84,7 +84,7 @@ uw.barrier()
 # * For more information see, `UWsubduction/Background/scaling`
 # 
 
-# In[7]:
+# In[72]:
 
 
 #import parameters, model settings, unit registry, scaling system, etc
@@ -111,14 +111,14 @@ md.res = 48
 
 # ## Build / refine mesh, Stokes Variables
 
-# In[8]:
+# In[73]:
 
 
 #(ndp.rightLim - ndp.leftLim)/ndp.depth
 #md.res = 64
 
 
-# In[9]:
+# In[74]:
 
 
 yres = int(md.res)
@@ -142,7 +142,7 @@ velocityField.data[:] = 0.
 pressureField.data[:] = 0.
 
 
-# In[10]:
+# In[75]:
 
 
 #mesh.reset() #call to reset mesh nodes to original locations
@@ -168,7 +168,7 @@ if md.refineVert:
 
 # ## Build plate model
 
-# In[11]:
+# In[76]:
 
 
 
@@ -177,7 +177,7 @@ refVel = ndimlz(2*ur.cm/ur.year)
 plateModelDt = ndimlz(0.1*ur.megayear)
 
 
-# In[12]:
+# In[77]:
 
 
 #velocities of the plates (1 - 3) ams well as the plate boundary (1,2)
@@ -188,13 +188,13 @@ vp3= ndimlz(-2.*ur.centimeter/ur.year )
 vb12= ndimlz(0.5*ur.centimeter/ur.year )
 
 
-# In[13]:
+# In[78]:
 
 
 print(vp1, vp2, vp3, vb12)
 
 
-# In[14]:
+# In[79]:
 
 
 tm = TectModel(mesh, 0, endTime, plateModelDt)
@@ -204,7 +204,7 @@ tm.add_plate(2, velocities=vp2)
 tm.add_plate(3, velocities=vp3)
 
 
-# In[15]:
+# In[80]:
 
 
 tm.add_left_boundary(1, plateInitAge=md.slabAge/3., velocities=False)
@@ -216,7 +216,7 @@ tm.add_subzone(2, 3, 0.2, subInitAge=md.slabAge, upperInitAge=md.opAgeAtTrench)
 tm.add_right_boundary(3, plateInitAge=0.0, velocities=False)
 
 
-# In[16]:
+# In[81]:
 
 
 #md.slabAge
@@ -224,7 +224,7 @@ tm.add_right_boundary(3, plateInitAge=0.0, velocities=False)
 
 # ## Build plate age / temperature Fns
 
-# In[17]:
+# In[82]:
 
 
 pIdFn = tm.plate_id_fn()
@@ -238,13 +238,13 @@ fnAge_map = fn.branching.map(fn_key = pIdFn ,
 #fig.show()
 
 
-# In[18]:
+# In[83]:
 
 
 #ndp.potentialTemp
 
 
-# In[19]:
+# In[84]:
 
 
 coordinate = fn.input()
@@ -259,7 +259,7 @@ plateTempProxFn = fn.branching.conditional( ((depthFn > platethickness, ndp.pote
 
 
 
-# In[20]:
+# In[85]:
 
 
 fig = glucifer.Figure(figsize=(600, 300))
@@ -269,7 +269,7 @@ fig.show()
 
 # ## Make swarm and Swarm Vars
 
-# In[21]:
+# In[86]:
 
 
 swarm = uw.swarm.Swarm(mesh=mesh, particleEscape=True)
@@ -287,7 +287,7 @@ signedDistanceVariable.data[:] = 0.0
 
 # ## Create tmUwMap
 
-# In[22]:
+# In[87]:
 
 
 #Now we have built are primary FEM / Swarm objects, we collect some of these in a dictionary,
@@ -301,7 +301,7 @@ tmUwMap = tm_uw_map([], velocityField, swarm,
 # 
 # * For more information see, `UWsubduction/Background/interface2D`
 
-# In[23]:
+# In[88]:
 
 
 def circGradientFn(S):
@@ -313,7 +313,7 @@ def circGradientFn(S):
         return -1e5
 
 
-# In[24]:
+# In[89]:
 
 
 #All of these wil be needed by the slab / fault setup functions
@@ -326,7 +326,7 @@ tmUwMap = tm_uw_map([], velocityField, swarm,
                     signedDistanceVariable, proxyTempVariable, proximityVariable)
 
 
-# In[25]:
+# In[90]:
 
 
 #define fault particle spacing, here ~5 paricles per element
@@ -350,7 +350,7 @@ fnJointTemp = fn.misc.min(proxyTempVariable,plateTempProxFn)
 proxyTempVariable.data[:] = fnJointTemp.evaluate(swarm)
 
 
-# In[26]:
+# In[91]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
@@ -365,7 +365,7 @@ proxyTempVariable.data[:] = fnJointTemp.evaluate(swarm)
 # 
 # In this section we setup some functions to help manage the spatial distribution of faults
 
-# In[27]:
+# In[92]:
 
 
 # Setup a swarm to define the replacment positions
@@ -431,14 +431,14 @@ velMaskFn = operator.and_( velMask1,  velMask2)
 #dummy = remove_faults_from_boundaries(tm, fCollection, faultRmfn )
 
 
-# In[28]:
+# In[93]:
 
 
 #maskFn_ = tm.t2f(faultRmfn)
 #pIdFn = tm.plate_id_fn(maskFn=maskFn_)
 
 
-# In[29]:
+# In[94]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
@@ -450,13 +450,13 @@ velMaskFn = operator.and_( velMask1,  velMask2)
 # 
 # 
 
-# In[30]:
+# In[95]:
 
 
 proximityVariable.data[:] = 0
 
 
-# In[31]:
+# In[96]:
 
 
 for f in fCollection:
@@ -464,18 +464,18 @@ for f in fCollection:
     f.set_proximity_director(swarm, proximityVariable, searchFac = 2., locFac=1.0)
 
 
-# In[32]:
+# In[97]:
 
 
 #update_faults()
 
 
-# In[33]:
+# In[103]:
 
 
 #figProx = glucifer.Figure(figsize=(960,300) )
 #figProx.append( glucifer.objects.Points(swarm , proximityVariable))
-#figProx.append( glucifer.objects.Surface(mesh, faultRmfn))
+#figProx.append( glucifer.objects.Surface(mesh, velMaskFn))
 
 #for f in fCollection:
 #    figProx.append( glucifer.objects.Points(f.swarm, pointSize=5))
@@ -485,7 +485,7 @@ for f in fCollection:
 #figProx.save_database('test.gldb')
 
 
-# In[34]:
+# In[99]:
 
 
 #testMM = fn.view.min_max(uw.function.input(f.swarm.particleCoordinates))
@@ -494,7 +494,7 @@ for f in fCollection:
 
 # ## Prescribed velocity
 
-# In[35]:
+# In[100]:
 
 
 def set_vel_return_nodes(time, maskFn):
@@ -520,10 +520,18 @@ def set_vel_return_nodes(time, maskFn):
     
 
 
-# In[36]:
+# In[101]:
 
 
 vXnodes = set_vel_return_nodes(0., velMaskFn)
+
+
+# In[116]:
+
+
+#np.empty(0), 
+test = tm.mesh.specialSets['MaxJ_VertexSet']
+test.data.shape
 
 
 # In[37]:
