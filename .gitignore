@@ -11,3 +11,5 @@
 *.gldb
 **/results/
 **/output/
+**/datas.tar.gz
+./datas.tar.gz
