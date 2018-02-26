@@ -84,13 +84,13 @@ uw.barrier()
 # * For more information see, `UWsubduction/Background/scaling`
 # 
 
-# In[7]:
+# In[9]:
 
 
 #import parameters, model settings, unit registry, scaling system, etc
 
-from unsupported_dan.UWsubduction.minimal_example import paramDict_dim, modelDict_dim
-from unsupported_dan.UWsubduction.minimal_example import UnitRegistry, sub_scaling, build_nondim_dict
+from unsupported_dan.UWsubduction.minimal_example import paramDict_dim, modelDict_dim, UnitRegistry
+from unsupported_dan.UWsubduction.default_scaling import sub_scaling, build_nondim_dict
 from unsupported_dan.UWsubduction.minimal_example import rayleighNumber, stressScale, pressureDepthGrad
 
 
@@ -111,14 +111,14 @@ md.res = 48
 
 # ## Build / refine mesh, Stokes Variables
 
-# In[8]:
+# In[10]:
 
 
 #(ndp.rightLim - ndp.leftLim)/ndp.depth
 #md.res = 64
 
 
-# In[9]:
+# In[11]:
 
 
 yres = int(md.res)
@@ -142,7 +142,7 @@ velocityField.data[:] = 0.
 pressureField.data[:] = 0.
 
 
-# In[10]:
+# In[12]:
 
 
 #mesh.reset() #call to reset mesh nodes to original locations
@@ -168,7 +168,7 @@ if md.refineVert:
 
 # ## Build plate model
 
-# In[11]:
+# In[13]:
 
 
 
@@ -177,7 +177,7 @@ refVel = ndimlz(2*ur.cm/ur.year)
 plateModelDt = ndimlz(0.1*ur.megayear)
 
 
-# In[12]:
+# In[14]:
 
 
 #velocities of the plates (1 - 3) ams well as the plate boundary (1,2)
@@ -188,7 +188,7 @@ vp3= ndimlz(-2.*ur.centimeter/ur.year )
 vb12= ndimlz(0.5*ur.centimeter/ur.year )
 
 
-# In[13]:
+# In[15]:
 
 
 print(vp1, vp2, vp3, vb12)
@@ -365,7 +365,7 @@ proxyTempVariable.data[:] = fnJointTemp.evaluate(swarm)
 # 
 # In this section we setup some functions to help manage the spatial distribution of faults
 
-# In[68]:
+# In[75]:
 
 
 # Setup a swarm to define the replacment positions
@@ -396,11 +396,10 @@ del allys
 #While leaving nodes near the plate boundaries free to adjust
 
 
-depthRemoveFn  = depthFn > md.faultDestroyDepth
-faultRmfn1 = tm.t2f(tm.variable_boundary_mask_fn(distMax=1e5, distMin=ndimlz(10*ur.km), relativeWidth = 0.9, 
+faultRmfn = tm.t2f(tm.variable_boundary_mask_fn(distMax=1e5, distMin=ndimlz(10*ur.km), relativeWidth = 0.9, 
                                   minPlateLength =ndimlz(60*ur.km),  
                                            out = 'bool', boundtypes='sub' ))
-faultRmfn = tm.combine_mask_fn(depthRemoveFn, faultRmfn1 )
+
 
 #this one will put particles back into the fault
 faultAddFn1 = tm.variable_boundary_mask_fn(distMax=1e6, distMin=ndimlz(10*ur.km), 
@@ -427,23 +426,23 @@ velMaskFn = operator.and_( velMask1,  velMask2)
 
 
 #order is very important here
-dummy = remove_fault_drift(fCollection, faultloc)
-dummy = pop_or_perish(tm, fCollection, faultMasterSwarm, faultAddFn , ds)
-dummy = remove_faults_from_boundaries(tm, fCollection, faultRmfn )
+#dummy = remove_fault_drift(fCollection, faultloc)
+#dummy = pop_or_perish(tm, fCollection, faultMasterSwarm, faultAddFn , ds)
+#dummy = remove_faults_from_boundaries(tm, fCollection, faultRmfn )
 
 
-# In[28]:
+# In[77]:
 
 
 #maskFn_ = tm.t2f(faultRmfn)
 #pIdFn = tm.plate_id_fn(maskFn=maskFn_)
 
 
-# In[70]:
+# In[81]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
-#fig.append( glucifer.objects.Surface(tm.mesh, faultRmfn, onMesh=True))
+#fig.append( glucifer.objects.Surface(tm.mesh, pIdFn, onMesh=True, valueRange = [0,3]))
 #fig.show()
 
 
@@ -864,7 +863,7 @@ def rebuild_solver(stokes):
     return solver
 
 
-# In[71]:
+# In[82]:
 
 
 def update_faults():
@@ -875,9 +874,16 @@ def update_faults():
     dummy = pop_or_perish(tm, fCollection, faultMasterSwarm, faultAddFn , ds)
     dummy = remove_faults_from_boundaries(tm, fCollection, faultRmfn )
     
-    #The repair_interface2D routine is supposed to maintain particle density and smooth
+    
     for f in fCollection:
-            repair_interface2D(f, ds, k=8)
+        
+        #Remove particles below a specified depth
+        depthMask = f.swarm.particleCoordinates.data[:,1] <         (1. - md.faultDestroyDepth)
+        with f.swarm.deform_swarm():
+            f.swarm.particleCoordinates.data[depthMask] = (9999999., 9999999.)
+        
+        #The repair_interface2D routine is supposed to maintain particle density and smooth
+        repair_interface2D(f, ds, k=8)
     
 
 
@@ -953,10 +959,9 @@ def update_tect_model(tectModel, tmUwMap, time, dt = 0.0 ):
 
 def update_mask_fns():
 
-    faultRmfn1 = tm.t2f(tm.variable_boundary_mask_fn(distMax=1e5, distMin=ndimlz(10*ur.km), relativeWidth = 0.9, 
+    faultRmfn = tm.t2f(tm.variable_boundary_mask_fn(distMax=1e5, distMin=ndimlz(10*ur.km), relativeWidth = 0.9, 
                                       minPlateLength =ndimlz(60*ur.km),  
                                                out = 'bool', boundtypes='sub' ))
-    faultRmfn = tm.combine_mask_fn(depthRemoveFn, faultRmfn1 )
 
     #this one will put particles back into the fault
     faultAddFn1 = tm.variable_boundary_mask_fn(distMax=1e6, distMin=ndimlz(10*ur.km), 
