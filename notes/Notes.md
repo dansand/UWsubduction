@@ -11,6 +11,7 @@
 * 1400 degree potential temp
 * Im using the constant 1. for the dimensionless diffusivity in the plate and slab creation routines. Kind of opaque.
 * make the viscosityMapFns smart - need to map all proximities to interfac rheology
+* dampen the strain-rate-depndent plate boundary calls
   ​
 
 ## TectModel
