@@ -858,7 +858,7 @@ def update_tect_model(tectModel, tmUwMap, time, dt = 0.0 ):
         #now we'll apply a strain rate query to update the subduction zone loc
         elif tectModel.is_subduction_boundary(e):
             e = tectModel.subduction_edge_order(e)
-            newx = strain_rate_field_update(tectModel, e, tmUwMap)
+            newx = strain_rate_field_update(tectModel, e, tmUwMap, dist = ndimlz(100*ur.kilometer))
             tectModel.set_bound_loc(e, newx)
         else:
             pass
@@ -1019,7 +1019,7 @@ faults_update = 10   # rebuild, truncate markerLines / interfaces
 dt_model = 0.
 steps_update_model = 10
 
-valuesUpdateFn()
+update_values()
 
 
 # In[110]:
