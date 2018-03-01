@@ -2,14 +2,37 @@
 # coding: utf-8
 
 # # Velocity Bcs
+# 
+# ## Summary 
+# 
+# The main aim of this model is show how the TectModel object can be used to handle velocity boundary conditions in a (somewhat) straightforward way.
+# 
+# 
+# ## To do
+# 
+# * complete velBCs versus partial velBCs
 
-# In[83]:
+# In[17]:
 
 
 #!apt-cache policy petsc-dev
 
 
-# In[84]:
+# In[18]:
+
+
+import numpy as np
+import underworld as uw
+from underworld import function as fn
+import glucifer
+from easydict import EasyDict as edict
+import networkx as nx
+import operator
+
+import warnings; warnings.simplefilter('ignore')
+
+
+# In[19]:
 
 
 #load in parent stuff
@@ -18,7 +41,7 @@ import nb_load_stuff
 from tectModelClass import *
 
 
-# In[85]:
+# In[20]:
 
 
 #If run through Docker we'll point at the local 'unsupported dir.'
@@ -33,155 +56,189 @@ except:
     pass
 
 
-# In[86]:
+# In[21]:
 
 
-#%load_ext autoreload
-
-from unsupported_dan.UWsubduction.base_params import *
 from unsupported_dan.UWsubduction.subduction_utils import *
-from unsupported_dan.interfaces.marker2D import markerLine2D, line_collection
 from unsupported_dan.interfaces.smoothing2D import *
 from unsupported_dan.utilities.misc import cosine_taper
+from unsupported_dan.interfaces.interface2D import interface2D , interface_collection
 
 
-# In[87]:
+# ## Create output dir structure
+
+# In[22]:
 
 
-ndp.maxDepth
+#outputPath = os.path.join(os.path.abspath("."),"output/")
+outputPath = os.path.join(os.path.abspath("."),"output/files")
+
+if uw.rank()==0:
+    if not os.path.exists(outputPath):
+        os.makedirs(outputPath)
+uw.barrier()
 
 
-# In[88]:
+# ## Parameters / Scaling
+# 
+# * For more information see, `UWsubduction/Background/scaling`
+# 
+
+# In[23]:
 
 
-import numpy as np
-import underworld as uw
-from underworld import function as fn
-import glucifer
-from easydict import EasyDict as edict
-import networkx as nx
-import operator
+#import parameters, model settings, unit registry, scaling system, etc
+
+from unsupported_dan.UWsubduction.minimal_example import paramDict_dim, modelDict_dim, UnitRegistry
+from unsupported_dan.UWsubduction.default_scaling import sub_scaling, build_nondim_dict
+from unsupported_dan.UWsubduction.minimal_example import rayleighNumber, stressScale, pressureDepthGrad
 
 
-# ## Changes to base params
+#define some more concise names
+ur = UnitRegistry
+sca = sub_scaling
+ndimlz = sca.nonDimensionalize
+#build the dimensionless paramter / model dictionaries
+ndp = build_nondim_dict(paramDict_dim  , sca)   
+md = build_nondim_dict(modelDict_dim  , sca)
 
-# In[89]:
+assert ndimlz(paramDict_dim.refLength) == 1.0
 
-
-#These will keep changing if the notebook is run again without restarting!
-
-ndp.depth *= 0.8 #800 km
-ndp.faultThickness *= 1.5 #15 km
-ndp.interfaceViscCutoffDepth *= 1.5 #150 km
-ndp.maxDepth *= 1.5
+# changes to base params: (These will keep changing if the notebook is run again without restarting!)
+md.faultThickness *= 1.5 #15 km
 md.res = 48
-#ndp.radiusOfCurv*=0.72  #~250 km
-md.nltol = 0.025
-md.ppc = 25
-#print(ndp.faultThickness*2900)
-ndp.yieldStressMax *=0.5  #150 Mpa
 
 
-# ## Build mesh, Stokes Variables
+# ## Build / refine mesh, Stokes Variables
 
-# In[90]:
+# In[24]:
 
 
 #(ndp.rightLim - ndp.leftLim)/ndp.depth
 #md.res = 64
 
 
-# In[91]:
+# In[25]:
 
 
 yres = int(md.res)
-xres = int(md.res*12) 
+xres = int(md.res*6) 
+
+halfWidth = 0.5*md.depth*md.aspectRatio 
+
+minCoord_    = (-1.*halfWidth, 1. - md.depth) 
+maxCoord_    = (halfWidth, 1.)
 
 mesh = uw.mesh.FeMesh_Cartesian( elementType = (md.elementType),
                                  elementRes  = (xres, yres), 
-                                 minCoord    = (ndp.leftLim, 1. - ndp.depth), 
-                                 maxCoord    = (ndp.rightLim, 1.)) 
+                                 minCoord    = minCoord_, 
+                                 maxCoord    = maxCoord_) 
 
 velocityField = uw.mesh.MeshVariable( mesh=mesh,         nodeDofCount=2)
 pressureField   = uw.mesh.MeshVariable( mesh=mesh.subMesh, nodeDofCount=1 )
-
+    
 
 velocityField.data[:] = 0.
 pressureField.data[:] = 0.
 
 
+# In[26]:
+
+
+#mesh.reset() #call to reset mesh nodes to original locations
+
+if md.refineHoriz:
+    
+    with mesh.deform_mesh():
+        
+        normXs = 2.*mesh.data[:,0]/(mesh.maxCoord[0] - mesh.minCoord[0])
+        mesh.data[:,0] = mesh.data[:,0] * np.exp(md.meshRefineFactor*normXs**2) / np.exp(md.meshRefineFactor*1.0**2)    
+    
+if md.refineVert:
+
+    with mesh.deform_mesh():
+        
+        mesh.data[:,1] = mesh.data[:,1] - 1.0
+
+        normYs = -1.*mesh.data[:,1]/(mesh.maxCoord[1] - mesh.minCoord[1])
+        mesh.data[:,1] = mesh.data[:,1] * np.exp(md.meshRefineFactor*normYs**2)/np.exp(md.meshRefineFactor*1.0**2)
+
+        mesh.data[:,1] = mesh.data[:,1] + 1.0
+
+
 # ## Build plate model
 
-# In[92]:
+# In[27]:
 
 
-#Set up some velocities
-cm2ms = (1/100.)*(1./(3600*24*365)) 
 
-vp1= 0.*cm2ms #m/s
-vp1 /= sf.velocity
-
-vp2= 3.*cm2ms #m/s
-vp2 /= sf.velocity
-
-vp3= -2.*cm2ms #m/s
-vp3 /= sf.velocity
-
-vb12= 0.5*cm2ms #m/s
-vb12 /= sf.velocity
-
-ma2s = 1e6*(3600*24*365)
-endTime = 30*ma2s/sf.time
-dt = 0.1*ma2s/sf.time
-testTime = 5*ma2s/sf.time
+endTime = ndimlz(30*ur.megayear) 
+refVel = ndimlz(2*ur.cm/ur.year)
+plateModelDt = ndimlz(0.1*ur.megayear)
 
 
-# In[93]:
+# In[28]:
 
 
-#print(vp1, vp2, vp3, vb12)
+#velocities of the plates (1 - 3) ams well as the plate boundary (1,2)
+vp1= ndimlz(0.*ur.centimeter/ur.year )
+vp2= ndimlz(3.*ur.centimeter/ur.year )
+vp3= ndimlz(-2.*ur.centimeter/ur.year )
+
+vb12= ndimlz(0.5*ur.centimeter/ur.year )
 
 
-# In[94]:
+# In[29]:
 
 
-#20 Ma moddel, timestep of 200 Ka 
-tg = TectModel(mesh, 0, endTime, dt)
-
-tg.add_plate(1, velocities=vp1)
-tg.add_plate(2, velocities=vp2)
-tg.add_plate(3, velocities=vp3)
+print(vp1, vp2, vp3, vb12)
 
 
-# In[95]:
+# In[30]:
 
 
-tg.add_left_boundary(1, plateInitAge=ndp.slabMaxAge/3., velocities=False)
-#tg.add_left_boundary(2, plateInitAge=0., velocities=False)
+tm = TectModel(mesh, 0, endTime, plateModelDt)
 
-tg.add_ridge(1,2, -0.6, velocities=vb12)
-tg.add_subzone(2, 3, 0.2, subInitAge=ndp.slabMaxAge, upperInitAge=ndp.opMaxAge)
-
-tg.add_right_boundary(3, plateInitAge=0.0, velocities=False)
+tm.add_plate(1, velocities=vp1)
+tm.add_plate(2, velocities=vp2)
+tm.add_plate(3, velocities=vp3)
 
 
-# ## Build plate age
-
-# In[96]:
+# In[31]:
 
 
-pIdFn = tg.plate_id_fn()
-pAgeDict = tg.plate_age_fn() 
+tm.add_left_boundary(1, plateInitAge=md.slabAge/3., velocities=False)
+#tm.add_left_boundary(2, plateInitAge=0., velocities=False)
+
+tm.add_ridge(1,2, -0.6, velocities=vb12)
+tm.add_subzone(2, 3, 0.2, subInitAge=md.slabAge, upperInitAge=md.opAgeAtTrench)
+
+tm.add_right_boundary(3, plateInitAge=0.0, velocities=False)
+
+
+# ## Build plate age / temperature Fns
+
+# In[33]:
+
+
+pIdFn = tm.plate_id_fn()
+pAgeDict = tm.plate_age_fn() 
 
 fnAge_map = fn.branching.map(fn_key = pIdFn , 
                           mapping = pAgeDict )
 
 #fig = glucifer.Figure(figsize=(600, 300))
-#fig.append( glucifer.objects.Surface(tg.mesh, fnAge_map ))
+#fig.append( glucifer.objects.Surface(tm.mesh, fnAge_map ))
 #fig.show()
 
 
-# In[97]:
+# In[34]:
+
+
+#ndp.potentialTemp
+
+
+# In[35]:
 
 
 coordinate = fn.input()
@@ -189,40 +246,24 @@ depthFn = mesh.maxCoord[1] - coordinate[1]
 
 platethickness = 2.32*fn.math.sqrt(1.*fnAge_map )  
 
-halfSpaceTemp = ndp.potentialTemp*fn.math.erf((depthFn)/(2.*fn.math.sqrt(1.*fnAge_map)))
+halfSpaceTemp = ndp.potentialTemp_*fn.math.erf((depthFn)/(2.*fn.math.sqrt(1.*fnAge_map)))
 
-plateTempProxFn = fn.branching.conditional( ((depthFn > platethickness, ndp.potentialTemp ), 
+plateTempProxFn = fn.branching.conditional( ((depthFn > platethickness, ndp.potentialTemp_ ), 
                                            (True,                      halfSpaceTemp)  ))
 
 
 
-# In[98]:
+# In[36]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
-#fig.append( glucifer.objects.Surface(tg.mesh, plateTempProxFn, onMesh = True))
+#fig.append( glucifer.objects.Surface(tm.mesh, plateTempProxFn, onMesh = True))
 #fig.show()
 
 
-# ## Make swarm and Slabs
+# ## Make swarm and Swarm Vars
 
-# In[99]:
-
-
-def circGradientFn(S):
-    if S == 0.:
-        return 0.
-    elif S < ndp.radiusOfCurv:
-        return max(-S/np.sqrt((ndp.radiusOfCurv**2 - S**2)), -1e3)
-    else:
-        return -1e5
-    
-    
-def linearGradientFn(S):
-    return np.tan(np.deg2rad(-25.))
-
-
-# In[100]:
+# In[37]:
 
 
 swarm = uw.swarm.Swarm(mesh=mesh, particleEscape=True)
@@ -238,7 +279,35 @@ proximityVariable.data[:] = 0.0
 signedDistanceVariable.data[:] = 0.0
 
 
-# In[101]:
+# ## Create tmUwMap
+
+# In[38]:
+
+
+#Now we have built are primary FEM / Swarm objects, we collect some of these in a dictionary,
+#to provide a consistent form to pass to methods of TectModel
+
+tmUwMap = tm_uw_map([], velocityField, swarm, 
+                    signedDistanceVariable, proxyTempVariable, proximityVariable)
+
+
+# ## Make slab perturbation and subduction interface
+# 
+# * For more information see, `UWsubduction/Background/interface2D`
+
+# In[39]:
+
+
+def circGradientFn(S):
+    if S == 0.:
+        return 0.
+    elif S < md.radiusOfCurv:
+        return max(-S/np.sqrt((md.radiusOfCurv**2 - S**2)), -1e3)
+    else:
+        return -1e5
+
+
+# In[40]:
 
 
 #All of these wil be needed by the slab / fault setup functions
@@ -251,171 +320,99 @@ tmUwMap = tm_uw_map([], velocityField, swarm,
                     signedDistanceVariable, proxyTempVariable, proximityVariable)
 
 
-# In[102]:
+# In[41]:
 
 
 #define fault particle spacing, here ~5 paricles per element
-ds = (tg.maxX - tg.minX)/(2.*tg.mesh.elementRes[0])
+ds = (tm.maxX - tm.minX)/(2.*tm.mesh.elementRes[0])
 
-fCollection = line_collection([])
+fCollection = interface_collection([])
 
 
 
-for e in tg.undirected.edges():
-    if tg.is_subduction_boundary(e):
-        build_slab_distance(tg, e, circGradientFn, ndp.maxDepth, tmUwMap)        
-        fb = build_fault(tg, e, circGradientFn, ndp.faultThickness , ndp.maxDepth, ds, ndp.faultThickness, tmUwMap)
+for e in tm.undirected.edges():
+    if tm.is_subduction_boundary(e):
+        build_slab_distance(tm, e, circGradientFn, md.slabInitMaxDepth, tmUwMap)        
+        fb = build_fault(tm, e, circGradientFn, md.faultThickness , md.slabInitMaxDepth, ds, md.faultThickness, tmUwMap)
         fCollection.append(fb)
 
 #
-build_slab_temp(tmUwMap, ndp.potentialTemp, ndp.slabMaxAge)
+build_slab_temp(tmUwMap, ndp.potentialTemp_, md.slabAge)
 fnJointTemp = fn.misc.min(proxyTempVariable,plateTempProxFn)
 
 #And now reevaluate this guy on the swarm
 proxyTempVariable.data[:] = fnJointTemp.evaluate(swarm)
 
 
-# In[103]:
+# In[42]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
 #fig.append( glucifer.objects.Points(swarm, proxyTempVariable))
+#fig.append( glucifer.objects.Points(fb.swarm))
 #fig.show()
 #fig.save_database('test.gldb')
 
 
-# ##  Fault rebuild
+# ##  Define subduction interface evolution (rebuild/destroy)
 # 
-# In this sections we apply setup and apply some functions to help manage the spatial (spatial) distribution of faults, as velocity boundary conditions. Both objects need to be able to talk to teh TectModel.
+# 
+# In this section we setup some functions to help manage the spatial distribution and evolution of the interfaces (faults)
 
-# In[104]:
+# In[43]:
+
+
+##What are we doing here??
+
+
+#By running remove_fault_drift(fCollection, faultloc)
+#We make sure that interface particles don't drift above their initial vertical location
+
+#By running pop_or_perish(tm, fCollection, faultMasterSwarm, fn.misc.constant(True) , ds)
+#particles will get added anywhere were on the subucting plate that is outside the current interface extent
+#new particles are 'sourced' from the  faultMasterSwarm 
+
+#Then we remove any interface particles around the ridge as defined by faultRmfn
+faultRmfn = tm.variable_boundary_mask_fn(distMax = ndimlz(100*ur.km),
+                                           distMin = ndimlz(20*ur.km), 
+                                           relativeWidth = 0.1,
+                                           boundtypes='ridge')
+
 
 
 # Setup a swarm to define the replacment positions
-
 fThick= fCollection[0].thickness
-
-faultloc = 1. - ndp.faultThickness*md.faultLocFac
-
+faultloc = 1. - md.faultThickness*md.faultLocFac
 allxs = np.arange(mesh.minCoord[0], mesh.maxCoord[0], ds )[:-1]
 allys = (mesh.maxCoord[1] - fThick)*np.ones(allxs.shape)
-
 faultMasterSwarm = uw.swarm.Swarm( mesh=mesh )
 dummy =  faultMasterSwarm.add_particles_with_coordinates(np.column_stack((allxs, allys)))
 del allxs
 del allys
 
 
-# #this one will repopulating (overpopulate) the faults
-# boundMaskFn = tg.plate_interior_mask_fn(relativeWidth=0.75, 
-#                                         minPlateLength=10e3/sf.lengthScale, invert=False)
-# 
-# #this one will truncate the faults
-# ridgeMaskFn = tg.variable_boundary_mask_fn(distMax=100., distMin=0.0, relativeWidth = 0.85, 
-#                                   minPlateLength =50e3/sf.lengthScale,  
-#                                            out = 'bool', boundtypes='ridge', bound=(1,2))
-# 
-# 
-# ###The following mask function provide a way of building velocity conditions within the plates,
-# #while leaving nodes near the plate boundaries free to adjust
-# 
-# velMask1 = tg.variable_boundary_mask_fn(distMax=20.2, distMin=0.0, relativeWidth = 0.85, 
-#                         minPlateLength =50e3/sf.lengthScale,  out = 'bool', boundtypes='ridge')
-# 
-# velMask2= tg.plate_interior_mask_fn(relativeWidth=0.95, 
-#                                         minPlateLength=10e3/sf.lengthScale, invert=False)
-# 
-# velMaskFn = operator.and_( velMask1,  velMask2)
-# 
-# dummy = remove_fault_drift(fCollection, faultloc)
-# dummy = pop_or_perish(tg, fCollection, faultMasterSwarm, boundMaskFn, ds)
-# dummy = remove_faults_from_boundaries(fCollection, ridgeMaskFn)
-# 
-
-# In[105]:
-
-
-##What are we doing here??
-
-#*faultRmfn descibs an area around the trench in which fault particles are allowed. Outside of this region they
-#are destroyed using (remove_faults_from_boundaries). Note that the
-
-#* faultAddFn desribes a region internal to the subduction plate wherwe we rebuild the fault. 
-#this function deliberately'over-builds' the fault, while remove_faults_from_boundaries then trims it to size
-
-#* velMaskFn defines the nodes where we will apply the plate velocties. 
-#While leaving nodes near the plate boundaries free to adjust
-
-
-
-faultRmfn = tg.t2f(tg.variable_boundary_mask_fn(distMax=10., distMin=10e3/sf.lengthScale, relativeWidth = 0.9, 
-                                  minPlateLength =60e3/sf.lengthScale,  
-                                           out = 'bool', boundtypes='sub' ))
-
-
-#this one will put particles back into the fault
-faultAddFn1 = tg.variable_boundary_mask_fn(distMax=10., distMin=10e3/sf.lengthScale, 
-                                       relativeWidth = 0.95, minPlateLength =60e3/sf.lengthScale,  
-                                           out = 'bool', boundtypes='sub' )
-
-#thsi will keep the fault addition away from the subdcution zone
-faultAddFn2 =  tg.t2f(tg.variable_boundary_mask_fn(distMax = 150e3/sf.lengthScale, relativeWidth = 0.9 ))
-
-faultAddFn = operator.and_( faultAddFn1 ,  faultAddFn2)
-
-
-
-
-###The following mask function provide a way of building velocity conditions within the plates,
-
-velMask1 = tg.variable_boundary_mask_fn(distMax=20.2, distMin=0.0, relativeWidth = 0.85, 
-                        minPlateLength =50e3/sf.lengthScale,  out = 'bool', boundtypes='ridge')
-
-velMask2= tg.plate_interior_mask_fn(relativeWidth=0.95, 
-                                        minPlateLength=10e3/sf.lengthScale, invert=False)
-
-velMaskFn = operator.and_( velMask1,  velMask2)
-
 
 #order is very important here
 dummy = remove_fault_drift(fCollection, faultloc)
-dummy = pop_or_perish(tg, fCollection, faultMasterSwarm, faultAddFn , ds)
-dummy = remove_faults_from_boundaries(tg, fCollection, faultRmfn )
+dummy = pop_or_perish(tm, fCollection, faultMasterSwarm, fn.misc.constant(True) , ds)
+dummy = remove_faults_from_boundaries(tm, fCollection, faultRmfn )
 
 
-# In[106]:
+# In[44]:
 
 
-#maskFn_ = tg.t2f(faultRmfn)
-#pIdFn = tg.plate_id_fn(maskFn=maskFn_)
+#maskFn_ = tm.t2f(faultRmfn)
+#pIdFn = tm.plate_id_fn(maskFn=maskFn_)
 
 
-# In[119]:
-
-
-#fig = glucifer.Figure(figsize=(600, 300))
-#fig.append( glucifer.objects.Surface(tg.mesh, faultAddFn, onMesh=True))
-#fig.show()
-
-
-# ## Fault rheology domain
-
-# In[108]:
-
-
-#xTfn = 
-faultLength = 400e3/sf.lengthScale
-faultTaper = 10e3/sf.lengthScale
-
-subZoneDistfn = tg.subZoneAbsDistFn(upper=True)
-faultTaperFunction  = cosine_taper(subZoneDistfn, faultLength, faultTaper)
-
-
-# In[109]:
+# In[45]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
-#fig.append( glucifer.objects.Surface(tg.mesh, faultTaperFunction  , onMesh = True))
+#fig.append( glucifer.objects.Surface(tm.mesh, faultRmfn, onMesh=True, colourBar=False))
+#for f in fCollection:
+#    fig.append( glucifer.objects.Points(f.swarm, pointSize=5,  colourBar=False))
+#fig.append( glucifer.objects.Surface(tm.mesh, pIdFn, onMesh=True, valueRange = [0,3]))
 #fig.show()
 
 
@@ -423,13 +420,13 @@ faultTaperFunction  = cosine_taper(subZoneDistfn, faultLength, faultTaper)
 # 
 # 
 
-# In[120]:
+# In[46]:
 
 
 proximityVariable.data[:] = 0
 
 
-# In[111]:
+# In[47]:
 
 
 for f in fCollection:
@@ -437,18 +434,18 @@ for f in fCollection:
     f.set_proximity_director(swarm, proximityVariable, searchFac = 2., locFac=1.0)
 
 
-# In[30]:
+# In[48]:
 
 
 #update_faults()
 
 
-# In[114]:
+# In[49]:
 
 
 #figProx = glucifer.Figure(figsize=(960,300) )
 #figProx.append( glucifer.objects.Points(swarm , proximityVariable))
-#figProx.append( glucifer.objects.Surface(mesh, faultRmfn))
+#figProx.append( glucifer.objects.Surface(mesh, velMaskFn))
 
 #for f in fCollection:
 #    figProx.append( glucifer.objects.Points(f.swarm, pointSize=5))
@@ -458,7 +455,7 @@ for f in fCollection:
 #figProx.save_database('test.gldb')
 
 
-# In[157]:
+# In[50]:
 
 
 #testMM = fn.view.min_max(uw.function.input(f.swarm.particleCoordinates))
@@ -467,7 +464,25 @@ for f in fCollection:
 
 # ## Prescribed velocity
 
-# In[32]:
+# In[51]:
+
+
+#The following mask functions define where our Dirichlet conditions are set
+#Basically we let areas around the trench and ridge evolve dyamaically, 
+#while the interior parts of the plate have imposed velocity
+
+
+#This removes the regions around the ridges from the velocity nodes (note the tm.t2f)
+velMask1 = tm.t2f(tm.ridge_mask_fn(dist=ndimlz(25*ur.km)))
+
+#This removes the regions around the subduction from the velocity nodes
+velMask2= tm.t2f(tm.subduction_mask_fn(dist=md.faultViscHorizTaperStart))
+
+#combine
+velMaskFn = operator.and_( velMask1,  velMask2)
+
+
+# In[52]:
 
 
 def set_vel_return_nodes(time, maskFn):
@@ -476,15 +491,16 @@ def set_vel_return_nodes(time, maskFn):
     velocityField
     """
     
-    nodes = tg.plate_vel_node_fn(time, maskFn = maskFn)
+    nodes = tm.plate_vel_node_fn(time, maskFn = maskFn)
     
     #4 parallel safety
     if not nodes.shape[0]:
         return np.array([])
         
-    pIdFn = tg.plate_id_fn()
-    velMapFn = tg.plateVelFn(testTime, pIdFn)
-    locs = tg.mesh.data[nodes]
+    pIdFn = tm.plate_id_fn()
+    #velMapFn = tm.plateVelFn(testTime, pIdFn)
+    velMapFn = tm.plateVelFn(time, pIdFn)
+    locs = tm.mesh.data[nodes]
 
     #Now set the veolcity on the nodes
     velocityField.data[nodes, 0] = velMapFn.evaluate(locs)[:,0]
@@ -492,35 +508,36 @@ def set_vel_return_nodes(time, maskFn):
     
 
 
-# In[33]:
+# In[53]:
 
 
 vXnodes = set_vel_return_nodes(0., velMaskFn)
 
 
-# In[34]:
+# In[54]:
 
 
-#vXnodes
+#np.empty(0), 
+#test = tm.mesh.specialSets['MaxJ_VertexSet']data.shape
 
 
-# In[35]:
+# In[55]:
 
 
 #check
 #%pylab inline
-#tWalls = tg.mesh.specialSets['MaxJ_VertexSet']
+#tWalls = tm.mesh.specialSets['MaxJ_VertexSet']
 
 
 #fig, ax = plt.subplots(figsize=(10, 2))
 #plt.plot(mesh.data[tWalls.data][:,0], velocityField.data[tWalls.data][:,0])#
 #plt.scatter(mesh.data[vXnodes ][:,0], np.zeros(len(mesh.data[vXnodes ][:,0])), s = 0.5, c = 'k')
-#ax.hlines(500, tg.minX, tg.maxX, linestyles='--')
+#ax.hlines(500, tm.minX, tm.maxX, linestyles='--')
 
 
 # ## Boundary conditions
 
-# In[36]:
+# In[56]:
 
 
 iWalls = mesh.specialSets["MinI_VertexSet"] + mesh.specialSets["MaxI_VertexSet"]
@@ -534,13 +551,13 @@ bWalls = mesh.specialSets["MinJ_VertexSet"]
 #                                           indexSetsPerDof = (iWalls, jWalls) )
 
 
-# In[37]:
+# In[57]:
 
 
 #vXnodes
 
 
-# In[38]:
+# In[58]:
 
 
 def build_velBcs(nodes):
@@ -556,13 +573,13 @@ def build_velBcs(nodes):
     return velBC
 
 
-# In[39]:
+# In[59]:
 
 
 velBC = build_velBcs(vXnodes)
 
 
-# In[40]:
+# In[60]:
 
 
 #vXnodes
@@ -570,11 +587,11 @@ velBC = build_velBcs(vXnodes)
 
 # ## Bouyancy
 
-# In[41]:
+# In[61]:
 
 
 # Now create a buoyancy force vector using the density and the vertical unit vector. 
-thermalDensityFn = ndp.rayleigh*(1. - proxyTempVariable)
+thermalDensityFn = md.buoyancyFac*rayleighNumber*(1. - proxyTempVariable)
 
 gravity = ( 0.0, -1.0 )
 
@@ -583,7 +600,7 @@ buoyancyMapFn = thermalDensityFn*gravity
 
 # ## Rheology
 
-# In[42]:
+# In[62]:
 
 
 symStrainrate = fn.tensor.symmetric( 
@@ -596,63 +613,90 @@ strainRate_2ndInvariant = fn.tensor.second_invariant(
 
 
 
-def safe_visc(func, viscmin=ndp.viscosityMin, viscmax=ndp.viscosityMax):
+def safe_visc(func, viscmin=md.viscosityMin, viscmax=md.viscosityMax):
     return fn.misc.max(viscmin, fn.misc.min(viscmax, func))
 
 
-# In[43]:
+# In[63]:
+
+
+#Interface rheology extent
+
+subZoneDistfn = tm.subZoneAbsDistFn(upper=True)
+
+
+faultHorizTaperFn  = cosine_taper(subZoneDistfn, 
+                                  md.faultViscHorizTaperStart, md.faultViscHorizTaperWidth)
+faultDepthTaperFn = cosine_taper(depthFn, 
+                                 md.faultViscDepthTaperStart, md.faultViscDepthTaperWidth)
+
+
+# In[65]:
 
 
 temperatureFn = proxyTempVariable
-adiabaticCorrectFn = depthFn*ndp.tempGradMantle
-dynamicPressureProxyDepthFn = pressureField/sf.pressureDepthGrad
+
+
+adiabaticCorrectFn = depthFn*ndp.adiabaticTempGrad
+dynamicPressureProxyDepthFn = pressureField/pressureDepthGrad
 druckerDepthFn = fn.misc.max(0.0, depthFn + md.druckerAlpha*(dynamicPressureProxyDepthFn))
 
 #Diffusion Creep
-diffusionUM = (1./ndp.diffusionPreExp)*            fn.math.exp( ((ndp.diffusionEnergy + (depthFn*ndp.diffusionVolume))/((temperatureFn+ adiabaticCorrectFn + ndp.surfaceTemp))))
+diffusionUM = (1./ndp.diffusionPreExp)*    fn.math.exp( ((ndp.diffusionEnergyDepth +                    (depthFn*ndp.diffusionVolumeDepth))/((temperatureFn+ adiabaticCorrectFn + ndp.surfaceTemp))))
 
 diffusionUM =     safe_visc(diffusionUM)
     
-diffusionLM = ndp.lowerMantleViscFac*(1./ndp.lowerMantlePreExp)*            fn.math.exp( ((ndp.lowerMantleEnergy + (depthFn*ndp.lowerMantleVolume))/((temperatureFn+ adiabaticCorrectFn + ndp.surfaceTemp))))
+diffusionLM = ndp.lowerMantleViscFac*(1./ndp.diffusionPreExp)*    fn.math.exp( ((ndp.diffusionEnergyDepth +                    (depthFn*ndp.diffusionVolumeDepth))/((temperatureFn+ adiabaticCorrectFn + ndp.surfaceTemp))))
 
-diffusionLM =     safe_visc(diffusionLM)
+#diffusionLM =     safe_visc(diffusionLM)
 
-    
-#combine upper and lower mantle   
-mantleCreep = fn.branching.conditional( ((depthFn < ndp.lowerMantleDepth, diffusionUM ), 
-                                           (True,                      diffusionLM )  ))
+
+transitionZoneTaperFn = cosine_taper(depthFn, md.lowerMantleDepth - 0.5*md.lowerMantleTransWidth , md.lowerMantleTransWidth )
+
+
+mantleCreep = diffusionUM*(1. - transitionZoneTaperFn) + transitionZoneTaperFn*diffusionLM
 
 #Define the mantle Plasticity
-ys =  ndp.cohesionMantle + (druckerDepthFn*ndp.frictionMantle)
+ys =  ndp.cohesionMantle + (druckerDepthFn*ndp.frictionMantleDepth)
 ysf = fn.misc.min(ys, ndp.yieldStressMax)
 yielding = ysf/(2.*(strainRate_2ndInvariant) + 1e-15) 
 
-
-mantleRheologyFn = safe_visc(fn.misc.min(mantleCreep, yielding), viscmin=ndp.viscosityMin, viscmax=ndp.viscosityMax)
-
-#Subduction interface viscosity
-interfaceViscosityFn = fn.misc.constant(0.5) + faultTaperFunction*mantleRheologyFn
+mantleRheologyFn =  safe_visc(mantleCreep*yielding/(mantleCreep + yielding), 
+                              viscmin=md.viscosityMin, viscmax=md.viscosityMax)
 
 
+faultViscosityFn = ndp.viscosityFault
 
-# In[44]:
+faultRheologyFn =  faultViscosityFn*(1. - faultDepthTaperFn) +                         faultDepthTaperFn*mantleRheologyFn + faultHorizTaperFn*mantleRheologyFn
 
 
-#viscconds = ((proximityVariable == 0, mantleRheologyFn),
-#             (True, interfaceViscosityFn ))
+# In[66]:
 
-#viscosityMapFn = fn.branching.conditional(viscconds)
-#viscosityMapFn = mantleRheologyFn
 
+#create a mapping dictionary that points proximity variable to fault rheology
+viscMapDict = {}
+viscMapDict[0] = mantleRheologyFn
+for f in fCollection:
+    viscMapDict[f.ID] = faultRheologyFn
+viscMapDict
 
 viscosityMapFn = fn.branching.map( fn_key = proximityVariable,
-                             mapping = {0:mantleRheologyFn,
-                                        2:interfaceViscosityFn} )
+                             mapping = viscMapDict)
+
+
+# In[68]:
+
+
+#fig2 = glucifer.Figure(figsize=(960,300) )
+#fig2.append( glucifer.objects.Points(swarm, mantleRheologyFn,  logScale=True))
+#fig.append( glucifer.objects.Surface(mesh, dynamicPressureProxyDepthFn))
+
+#fig2.show()
 
 
 # ## Stokes
 
-# In[45]:
+# In[69]:
 
 
 surfaceArea = uw.utils.Integral(fn=1.0,mesh=mesh, integrationType='surface', surfaceIndexSet=tWalls)
@@ -679,7 +723,7 @@ def pressure_calibrate():
     smooth_pressure(mesh)
 
 
-# In[46]:
+# In[70]:
 
 
 stokes = uw.systems.Stokes( velocityField  = velocityField, 
@@ -689,7 +733,7 @@ stokes = uw.systems.Stokes( velocityField  = velocityField,
                                    fn_bodyforce   = buoyancyMapFn )
 
 
-# In[47]:
+# In[71]:
 
 
 solver = uw.systems.Solver(stokes)
@@ -700,7 +744,7 @@ solver.set_penalty(1.0e7)
 solver.options.scr.ksp_rtol = 1.0e-4
 
 
-# In[48]:
+# In[72]:
 
 
 solver.solve(nonLinearIterate=True, nonLinearTolerance=md.nltol, callback_post_solve = pressure_calibrate)
@@ -728,6 +772,17 @@ population_control = uw.swarm.PopulationControl(swarm, deleteThreshold=0.006,
 # In[51]:
 
 
+valuesDict = edict({})
+valuesDict.timeAtSave = []
+valuesDict.stepAtSave = []
+for e in tm.undirected.edges():
+    valuesDict[str(e)] = []
+valuesDict  
+
+
+# In[52]:
+
+
 # Here we'll handle everything that should be advected - i.e. every timestep
 def advect_update():
     # Retrieve the maximum possible timestep for the advection system.
@@ -743,20 +798,18 @@ def advect_update():
     return dt, time+dt, step+1
 
 
-# In[52]:
+# In[53]:
 
 
 #velocityField.data[:] = 0.
 #pressureField.data[:] = 0.
 
 
-# In[53]:
+# In[54]:
 
 
 def update_stokes(time, viscosityMapFn ):
     
-
-
     
     #set velocity / pressure back to zero
     #velocityField.data[:] = 0.
@@ -779,7 +832,7 @@ def update_stokes(time, viscosityMapFn ):
     return stokes
 
 
-# In[54]:
+# In[55]:
 
 
 def rebuild_solver(stokes):
@@ -793,39 +846,31 @@ def rebuild_solver(stokes):
     return solver
 
 
-# In[55]:
+# In[56]:
 
 
 def update_faults():
     
-    ##the mask fns are static at this stage
-    #ridgeMaskFn = tg.ridge_mask_fn(ridgedist)
-    #subMaskFn = tg.subduction_mask_fn(subdist)
-    #boundMaskFn = tg.combine_mask_fn(ridgeMaskFn , subMaskFn )
-    
-    
     
     #order is very important here
     dummy = remove_fault_drift(fCollection, faultloc)
-    dummy = pop_or_perish(tg, fCollection, faultMasterSwarm, faultAddFn , ds)
-    dummy = remove_faults_from_boundaries(tg, fCollection, faultRmfn )
+    dummy = pop_or_perish(tm, fCollection, faultMasterSwarm, fn.misc.constant(True) , ds) #mask is everywhere > fn.misc.constant(True)
+    dummy = remove_faults_from_boundaries(tm, fCollection, faultRmfn )
+    
     
     for f in fCollection:
         
         #Remove particles below a specified depth
-        depthMask = f.swarm.particleCoordinates.data[:,1] <         (1. - (ndp.interfaceViscCutoffDepth - ndp.faultThickness))
+        depthMask = f.swarm.particleCoordinates.data[:,1] <         (1. - md.faultDestroyDepth)
         with f.swarm.deform_swarm():
             f.swarm.particleCoordinates.data[depthMask] = (9999999., 9999999.)
         
-        #Here we're grabbing a 'black box' routine , 
-        #which is supposed to maintain particle density and smooth
-        #quite experimental!!!
-        repair_markerLines(f, ds, k=8)
+        #The repair_interface2D routine is supposed to maintain particle density and smooth
+        repair_interface2D(f, ds, k=8)
     
-#faultRmfn
 
 
-# In[56]:
+# In[57]:
 
 
 def update_swarm():
@@ -838,16 +883,12 @@ def update_swarm():
                                 maxDistanceFn=fn.misc.constant(2.))
         
     #A simple depth cutoff for proximity
-    depthMask = swarm.particleCoordinates.data[:,1] < (1. - ndp.interfaceViscCutoffDepth)
+    depthMask = swarm.particleCoordinates.data[:,1] < (1. - md.faultDestroyDepth)
     proximityVariable.data[depthMask] = 0
     
-    
-    
-    
-    
 
 
-# In[57]:
+# In[58]:
 
 
 outputPath = os.path.join(os.path.abspath("."),"output/files")
@@ -860,7 +901,7 @@ uw.barrier()
 
 surfacexs = mesh.data[tWalls.data][:,0]
 surfaceys = mesh.data[tWalls.data][:,1]
-surfLine = markerLine2D(mesh, velocityField,surfacexs, surfaceys , 0,  99)
+surfLine = interface2D(mesh, velocityField,surfacexs, surfaceys , 0,  99)
 surfVx = uw.swarm.SwarmVariable(surfLine.swarm, 'double', 1)
 
 def save_files(step):
@@ -869,46 +910,8 @@ def save_files(step):
     surfVx.save( "output/files/surfVx_" + str(step).zfill(3) + "_.h5")
 
 
-# In[58]:
-
-
-#save_files(0)
-
-
 # In[59]:
 
-
-#e = (3,3)
-#time = 1e-5
-#for e in tg.undirected.edges():
-#    print(tg.bound_has_vel(e, time))
-
-
-# In[60]:
-
-
-def set_boundary_vel_update(tectModel, platePair, time, dt):
-    bv = 0.
-    try:
-        bv = tectModel.bound_velocity(platePair, time=time)
-    except:
-        pass
-    
-    dx = bv*dt
-    newx = (tectModel.get_bound_loc(platePair) + dx)
-    
-    return newx
-
-
-def strain_rate_field_update(tectModel, e, tmUwMap):
-    dist = 100e3/sf.lengthScale #limit the search radius
-    maskFn = tectModel.plate_boundary_mask_fn(dist, out='num',bound=e )
-    srLocMins, srLocMaxs = strain_rate_min_max(tectModel, tmUwMap, maskFn)
-    if tg.is_subduction_boundary(e):
-        return srLocMins[0][1]
-    else:
-        return srLocMaxs[0][1]
-    
 
 def update_tect_model(tectModel, tmUwMap, time, dt = 0.0 ):
     
@@ -919,7 +922,7 @@ def update_tect_model(tectModel, tmUwMap, time, dt = 0.0 ):
         
         #This is generally the first condition to check" a specified boundary velocity
         if tectModel.bound_has_vel(e, time):
-            newX = set_boundary_vel_update(tectModel, e, time, dt)
+            newX = get_boundary_vel_update(tectModel, e, time, dt)
             tectModel.set_bound_loc(e, newX)
             
         #in this model the ficticious boundaries remain fixed at the edge
@@ -928,127 +931,61 @@ def update_tect_model(tectModel, tmUwMap, time, dt = 0.0 ):
         #now we'll apply a strain rate query to update the subduction zone loc
         elif tectModel.is_subduction_boundary(e):
             e = tectModel.subduction_edge_order(e)
-            newx = strain_rate_field_update(tectModel, e, tmUwMap)
+            newx = strain_rate_field_update(tectModel, e, tmUwMap, dist = ndimlz(100*ur.kilometer))
             tectModel.set_bound_loc(e, newx)
         else:
             pass
-        
-
-def rebuild_mask_fns():
-
-    faultRmfn = tg.t2f(tg.variable_boundary_mask_fn(distMax=10., distMin=10e3/sf.lengthScale, relativeWidth = 0.9, 
-                                      minPlateLength =60e3/sf.lengthScale,  
-                                               out = 'bool', boundtypes='sub' ))
 
 
-    #this one will put particles back into the fault
-    faultAddFn1 = tg.variable_boundary_mask_fn(distMax=10., distMin=10e3/sf.lengthScale, 
-                                           relativeWidth = 0.95, minPlateLength =60e3/sf.lengthScale,  
-                                               out = 'bool', boundtypes='sub' )
-
-    faultAddFn2 =  tg.t2f(tg.variable_boundary_mask_fn(distMax = 100e3/sf.lengthScale, relativeWidth = 0.9 ))
+# In[81]:
 
 
-    faultAddFn = operator.and_( faultAddFn1 ,  faultAddFn2)
+#update_tect_model(tm, tmUwMap, 0., dt = 0.1 )
 
+
+# In[ ]:
+
+
+def update_mask_fns():
+
+    faultRmfn = tm.variable_boundary_mask_fn(distMax = ndimlz(100*ur.km),
+                                               distMin = ndimlz(20*ur.km), 
+                                               relativeWidth = 0.1,
+                                               boundtypes='ridge')
 
     ###The following mask function provide a way of building velocity conditions within the plates,
-    #while leaving nodes near the plate boundaries free to adjust
 
-    velMask1 = tg.variable_boundary_mask_fn(distMax=20.2, distMin=0.0, relativeWidth = 0.85, 
-                            minPlateLength =50e3/sf.lengthScale,  out = 'bool', boundtypes='ridge')
+    velMask1 = tm.variable_boundary_mask_fn(distMax=1e6, distMin=0.0, relativeWidth = 0.85, 
+                            minPlateLength =ndimlz(50*ur.km),  out = 'bool', boundtypes='ridge')
 
-    velMask2= tg.plate_interior_mask_fn(relativeWidth=0.95, 
-                                            minPlateLength=10e3/sf.lengthScale, invert=False)
+    velMask2= tm.plate_interior_mask_fn(relativeWidth=0.95, 
+                                            minPlateLength=ndimlz(10*ur.km), invert=False)
 
     velMaskFn = operator.and_( velMask1,  velMask2)
+
     
     
     #the following dictates where the fault rheology will be activated
-    subZoneDistfn = tg.subZoneAbsDistFn(upper=True)
-    faultTaperFunction  = cosine_taper(subZoneDistfn, faultLength, faultTaper)
+    subZoneDistfn = tm.subZoneAbsDistFn(upper=True)
     
-    return faultRmfn, faultAddFn, velMaskFn, faultTaperFunction
+    faultHorizTaperFn  = cosine_taper(subZoneDistfn, 
+                                  md.faultViscHorizTaperStart, md.faultViscHorizTaperWidth)
     
-    
+    return faultRmfn, velMaskFn, faultHorizTaperFn
 
-
-# def rebuild_mask_fns():
-#     
-#     
-#     #this one will repopulating (overpopulate) the faults
-#     boundMaskFn = tg.plate_interior_mask_fn(relativeWidth=0.75, 
-#                                             minPlateLength=10e3/sf.lengthScale, invert=False)
-# 
-#     #this one will truncate the faults
-#     ridgeMaskFn = tg.variable_boundary_mask_fn(distMax=100., distMin=0.0, relativeWidth = 0.75, 
-#                                       minPlateLength =50e3/sf.lengthScale,  
-#                                                out = 'bool', boundtypes='ridge', bound=(1,2))
-#      
-# 
-#     
-#     #this one is intended as a the velocity mask function
-#     velMask1 = tg.variable_boundary_mask_fn(distMax=20.2, distMin=0.0, relativeWidth = 0.85, 
-#                             minPlateLength =50e3/sf.lengthScale,  out = 'bool', boundtypes='ridge')
-# 
-#     #this one will repopulating (overpopulate) the faults
-#     velMask2= tg.plate_interior_mask_fn(relativeWidth=0.95, 
-#                                             minPlateLength=10e3/sf.lengthScale, invert=False)
-# 
-#     velMaskFn = operator.and_( velMask1,  velMask2)
-#        
-#     return ridgeMaskFn, boundMaskFn, velMaskFn
 
 # In[61]:
 
 
-#ridgeMaskFn, boundMaskFn, velMaskFn = rebuild_mask_fns()
-
-
-# In[62]:
-
-
-#st = update_stokes(0)
-#svt = rebuild_solver(st)
-
-
-# In[63]:
-
-
-#dttest = advector.get_max_dt()
-#update_tect_model(tg, tmUwMap,time=0., dt = dttest)
-
-
-# In[64]:
-
-
-#f.data.shape
-
-
-# In[65]:
-
-
-#update_faults()
-#update_swarm()
+#ridgeMaskFn, boundMaskFn, velMaskFn = update_mask_fns()
 
 
 # ## Track the values of the plate bounaries
 
-# In[66]:
-
-
-valuesDict = edict({})
-valuesDict.timeAtSave = []
-valuesDict.stepAtSave = []
-for e in tg.undirected.edges():
-    valuesDict[str(e)] = []
-valuesDict    
-
-
 # In[67]:
 
 
-def valuesUpdateFn():
+def update_values():
     
     """ 
     Assumes global variables:
@@ -1063,13 +1000,13 @@ def valuesUpdateFn():
     valuesDict.timeAtSave.append(time) 
     valuesDict.stepAtSave.append(step)
     
-    for e in tg.undirected.edges():
-        if tg.is_subduction_boundary(e):
-            ee = tg.subduction_edge_order(e) #hacky workaround for the directed/ undireted. need get_bound_loc
+    for e in tm.undirected.edges():
+        if tm.is_subduction_boundary(e):
+            ee = tm.subduction_edge_order(e) #hacky workaround for the directed/ undireted. need get_bound_loc
         else:
             ee = e
 
-        valuesDict[str(e)].append(tg.get_bound_loc(ee))
+        valuesDict[str(e)].append(tm.get_bound_loc(ee))
         
         
     #save
@@ -1078,14 +1015,6 @@ def valuesUpdateFn():
         #the '**' is important
         np.savez(fullpath, **valuesDict)
     
-
-
-# In[68]:
-
-
-#valuesUpdateFn()
-#valuesDict  
-#!ls output
 
 
 # ## Viz
@@ -1102,72 +1031,51 @@ if uw.rank()==0:
 uw.barrier()
 
 
-# In[71]:
+# In[78]:
 
 
 #ridgeMaskFn, boundMaskFn, velMaskFn
 
+
 maskFnVar1 = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
-maskFnVar1.data[:] = faultAddFn.evaluate(mesh)
+maskFnVar1.data[:] = faultRmfn.evaluate(mesh)
 
-
+plate_id_fn = tm.plate_id_fn()
 maskFnVar2 = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
-maskFnVar2.data[:] = faultRmfn.evaluate(mesh)
-
-plate_id_fn = tg.plate_id_fn()
-maskFnVar3 = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
-maskFnVar3.data[:] = plate_id_fn.evaluate(mesh)
+maskFnVar2.data[:] = plate_id_fn.evaluate(mesh)
 
 
-#maskFnVar4 = uw.mesh.MeshVariable( mesh=mesh, nodeDofCount=1 )
-maskFnVar4 =  swarm.add_variable( dataType="double", count=1 )
-maskFnVar4.data[:] = viscosityMapFn.evaluate(swarm)
+viscSwarmVar =  swarm.add_variable( dataType="double", count=1 )
+viscSwarmVar.data[:] = viscosityMapFn.evaluate(swarm)
 
 
-# In[72]:
+
+# In[79]:
 
 
 store1 = glucifer.Store('output/subduction1')
 store2 = glucifer.Store('output/subduction2')
 store3 = glucifer.Store('output/subduction3')
 
+#these figures are mainly intended for understanding how the interface is controlled, 
+#i.e. through the spatial mask functions 
 
+#in this figure we'll track the proximity variable
 figProx = glucifer.Figure(store1, figsize=(960,300) )
 figProx.append( glucifer.objects.Points(swarm , proximityVariable))
 for f in fCollection:
     figProx.append( glucifer.objects.Points(f.swarm, pointSize=5))
-#figProx.show()
 
 figVisc = glucifer.Figure( store2, figsize=(960,300) )
-#figVisc.append( glucifer.objects.Points(swarm, viscosityMapFn, pointSize=2, logScale=True) )
-figVisc.append( glucifer.objects.Points(swarm,  maskFnVar4, logScale=True) )
-
+figVisc.append( glucifer.objects.Points(swarm,  viscSwarmVar, logScale=True) )
 
 
 figMask = glucifer.Figure( store3, figsize=(960,300) )
 figMask.append( glucifer.objects.Surface(mesh,  maskFnVar1) )
-figMask.append( glucifer.objects.Surface(mesh,  maskFnVar2) )
-figMask.append( glucifer.objects.Surface(mesh, maskFnVar3 , valueRange=[0,3]) )
-
-
-
+figMask.append( glucifer.objects.Surface(mesh, maskFnVar2 , valueRange=[0,3]) )
 #figMask.append( glucifer.objects.Surface(mesh,  maskFnVar3) )
 for f in fCollection:
     figMask.append( glucifer.objects.Points(f.swarm, pointSize=5))
-
-
-
-# In[76]:
-
-
-#figVisc.show()
-#figVisc.save_database('test.gldb')
-
-
-# In[44]:
-
-
-#1e-2*2900.
 
 
 # ## Main Loop
@@ -1184,16 +1092,16 @@ faults_update = 10
 dt_model = 0.
 steps_update_model = 5
 
-valuesUpdateFn()
+update_values()
 
 
 # In[47]:
 
 
-#while time < tg.times[-1]:
-while step < maxSteps:
+while time < tm.times[-1] and step < maxSteps:
+    
     # Solve non linear Stokes system
-    solver.solve(nonLinearIterate=True)
+    solver.solve(nonLinearIterate=True, nonLinearTolerance=md.nltol, callback_post_solve = pressure_calibrate)
     
     #advect swarm and faults
     dt, time, step =  advect_update()
@@ -1202,25 +1110,25 @@ while step < maxSteps:
         
     #update tectonic model
     if step % steps_update_model == 0:
-        update_tect_model(tg, tmUwMap, time, dt = dt_model)
+        update_tect_model(tm, tmUwMap, time, dt = dt_model)
         dt_model = 0.
-        #ridgeMaskFn, subMaskFn, boundMaskFn, pIdFn= rebuild_mask_fns()
-        plate_id_fn = tg.plate_id_fn()
-        faultRmfn, faultAddFn, velMaskFn, faultTaperFunction = rebuild_mask_fns()
+        plate_id_fn = tm.plate_id_fn()
+        faultRmfn, velMaskFn, faultHorizTaperFn = update_mask_fns()
         
-        #interfaceViscosityFn = fn.misc.constant(0.5) + faultTaperFunction*mantleRheologyFn
+        #these need to be explicity updated
+        faultRheologyFn =  faultViscosityFn*(1. - faultDepthTaperFn) +        faultDepthTaperFn*mantleRheologyFn + faultHorizTaperFn*mantleRheologyFn
         
-        #viscosityMapFn = fn.branching.map( fn_key = proximityVariable,
-        #                     mapping = {0:mantleRheologyFn,
-        #                                2:interfaceViscosityFn} )
+        viscosityMapFn = fn.branching.map( fn_key = proximityVariable,
+                             mapping = {0:mantleRheologyFn,
+                                        2:faultRheologyFn} )
+        
+        
         #also update this guy for viz
-        maskFnVar1.data[:] = faultAddFn.evaluate(mesh)
-        maskFnVar2.data[:] = faultRmfn.evaluate(mesh)
-        maskFnVar3.data[:] = plate_id_fn.evaluate(mesh)
-        maskFnVar4.data[:] = viscosityMapFn.evaluate(swarm)
-
-        
-        valuesUpdateFn()
+        maskFnVar1.data[:] = faultRmfn.evaluate(mesh)
+        maskFnVar2.data[:] = plate_id_fn.evaluate(mesh)
+        viscSwarmVar.data[:] = viscosityMapFn.evaluate(swarm)
+ 
+        update_values()
         
     #running fault healing/addition, map back to swarm
     if step % faults_update == 0:
@@ -1251,4 +1159,10 @@ while step < maxSteps:
     
     if uw.rank()==0:
         print 'step = {0:6d}; time = {1:.3e}'.format(step,time)
+
+
+# In[88]:
+
+
+#tm.is_ridge((3,3))
 
