@@ -84,7 +84,7 @@ def easy_args(sysArgs, _dict):
                 (dic,arg) = dicitem.split(".")
 
 
-            print('check dic,arg', dic,arg)
+            #print('check dic,arg', dic,arg)
 
 
             #########
@@ -92,13 +92,13 @@ def easy_args(sysArgs, _dict):
             #########
 
             if val == 'True':
-                print('1')
+                #print('1')
                 val = True
             elif val == 'False':     #First check if args are boolean
-                print('2')
+                #print('2')
                 val = False
             else:
-                print('3')
+                #print('3')
                 try:
                     val = float(val) #next try to convert  to a float,
                 except ValueError:
