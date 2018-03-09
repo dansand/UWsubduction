@@ -10,25 +10,41 @@ import operator
 class TectonicModel(nx.DiGraph):
 
     """
+    The TectonicModel creates a directed graph that represents
+    the spatio-temporal evolution of plates and plate boundaries.
+    It is designed to provide a consistent objects for encoding this information,
+    as well as provding a number of methods that allow communcation
+    between the UW2 simulation and the TectonicModel.
 
-    ***note on has_edge()***
-    I intend most methods requiring two plates to take a tuple (plate1Id, plate2Id)
+    Parameters
+    ----------
+
+    mesh : uw.mesh.FeMesh
+        The mode mesh
+    starttime: float
+        The model start time (usually 0)
+    endtime: float
+        The model end time
+    dt: float
+        The time increment,
+        (the temporal reolsution of velocity information)
+
+    Notes
+    -----
+    most methods requiring two plates will take a tuple (plate1Id, plate2Id)
     the DiGraph has_edge() method can be handed a tuple, if it prececeeded by a *
     .has_edge(*(plate1Id, plate2Id)) //or// .has_edge(plate1Id, plate2Id)
 
-
-
-    Formatting:
-    use underscores for methods
+    Examples
+    -------
 
     """
 
 
     def __init__(self, mesh, starttime, endtime, dt):
 
-        ########Trying various ways to init the parent class
-        #super(nx.DiGraph, self).__init__(*args)
-        #super().__init__(*args)
+        #init the parent class
+
         nx.DiGraph.__init__(self)
         ################################
 
@@ -318,6 +334,13 @@ class TectonicModel(nx.DiGraph):
     """add a plate (node) to the the tectModel (graph)"""
 
     def add_plate(self, ID = False, velocities = False):
+
+        if not isinstance(ID, int) or ID==False:
+            raise TypeError("'ID' must be an integer, or False in which case it is auto assigned" )
+
+
+
+
         #default is an array of nans
         if velocities is False:      #use is to test for identity
             vels = np.empty(len(self.times))
@@ -894,19 +917,19 @@ class TectonicModel(nx.DiGraph):
         return fnVel_map
 
 
-    def subZoneAbsDistFn(self, bigNum = 1e3, upper = False):
+    def subZoneAbsDistFn(self, nonSpVal = 1e3, upper = False):
 
         """
         This is currently not valid for multiple subduction zones attached to one plate
+        nonSpVal: value on non-subducting plates
         """
-        #subZoneAbsDistDict = {0:fn.misc.constant(bigNum)}
 
         subZoneAbsDistDict = {}
         uG = self.undirected
         if upper is False:
             for n in uG.nodes():
                 if not self.is_subducting_plate(n):
-                    subZoneAbsDistDict[n] = fn.misc.constant(bigNum)
+                    subZoneAbsDistDict[n] = fn.misc.constant(nonSpVal)
                     #print('nup')
                 else:
                     #print('yup')
@@ -918,8 +941,8 @@ class TectonicModel(nx.DiGraph):
 
                             subZoneAbsDistDict[n] = xFn
         else:
-            #firt set all keys to the same value
-            subZoneAbsDistDict = dict.fromkeys(self.nodes(), fn.misc.constant(bigNum))
+            #first set all keys to the same value
+            subZoneAbsDistDict = dict.fromkeys(self.nodes(), fn.misc.constant(nonSpVal))
             for e in uG.edges():
                 if not self.is_subduction_boundary(e):
                     pass

@@ -14,6 +14,7 @@ def cosine_taper(increasingFn, startval, width):
 
 
 def slab_top(trench, normal, gradientFn, ds, maxDepth, mesh):
+    
     """
     Create points representing the top of a slab from trench to maxDepth
     Parameter
