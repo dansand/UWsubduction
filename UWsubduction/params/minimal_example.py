@@ -2,7 +2,10 @@ from easydict import EasyDict as edict
 import math
 import numpy as np
 import pint
-import unsupported.scaling as scaling;
+try:
+    import unsupported.scaling as sub_scaling;
+except:
+    import unsupported.geodynamics.scaling as sub_scaling;
 
 UnitRegistry = scaling.UnitRegistry
 u = UnitRegistry

@@ -1,4 +1,8 @@
-import unsupported.scaling as sub_scaling;
+try:
+    import unsupported.scaling as sub_scaling;
+except:
+    import unsupported.geodynamics.scaling as sub_scaling;
+    
 from minimal_example import pd, md
 from easydict import EasyDict as edict
 
