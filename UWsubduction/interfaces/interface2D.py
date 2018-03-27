@@ -9,10 +9,10 @@ import operator
 from scipy.spatial import cKDTree as kdTree
 
 class interface2D(object):
+
     """
     All the bits and pieces needed to define an interface(in 2D) from a string of points
     """
-
 
     def __init__(self, mesh, velocityField, pointsX, pointsY, fthickness, fID, insidePt=(0.0,0.0)):
 
@@ -167,8 +167,6 @@ class interface2D(object):
 
     def compute_normals(self, coords, thickness=None):
 
-
-
         # make sure this is called by all procs including those
         # which have an empty self
 
@@ -262,25 +260,39 @@ class interface2D(object):
         # This is the case if there are too few points to
         # compute normals so there can be values to remove
 
-        #can be important for parallel
-        self.swarm.shadow_particles_fetch()
-
-        #Always need to call self.data on all procs
         all_particle_coords = self.data
+
+        #can be important for parallel
+        #self.swarm.shadow_particles_fetch()
 
         if self.empty:
             self.director.data[...] = 0.0
         else:
 
+            #before looping through particles, we want to set up some things
+
+            #local coords
             particle_coords = self.swarm.particleCoordinates.data
+
+            if isinstance(self.insidePt, interface2D):
+                #local insidePoints
+                inside_particle_coords  = self.insidePt.swarm.particleCoordinates.data
+                if inside_particle_coords.shape[0] > 1:
+                    localkdtree = kdTree(inside_particle_coords)
+                    #get the full set of insidepoint NNs
+                    #self.insidePt._update_kdtree() #make sure kdtree is synced
+                    r, nindex = localkdtree.query(particle_coords, k=1)
+                    insidepoints = inside_particle_coords[nindex ]
+
 
             #these will hold the normal vector compenents
             Nx = np.empty(self.swarm.particleLocalCount)
             Ny = np.empty(self.swarm.particleLocalCount)
 
             for i, xy in enumerate(particle_coords):
-                r, neighbours = self.kdtree.query(particle_coords[i], k=3)
 
+
+                r, neighbours = self.kdtree.query(particle_coords[i], k=3)
                 # neighbour points are neighbours[1] and neighbours[2]
 
                 XY1 = all_particle_coords[neighbours[1]]
@@ -293,12 +305,43 @@ class interface2D(object):
                 Nx[i] =  dXY[1]
                 Ny[i] = -dXY[0]
 
-                if (self.insidePt):
+                #if the inside point is another interface2D object
+                #use the nearest point to define the orientation
+
+
+                if isinstance(self.insidePt, interface2D):
+                    if inside_particle_coords.shape[0] > 1:
+
+                        #if True is False:
+                        #only proceed if there are particles in the insidePt
+                        #if not self.insidePt.empty:
+
+                        #r, nindex = self.insidePt.kdtree.query(particle_coords[i], k=1)
+
+                        ip = insidepoints[i]
+                        #uw.barrier()
+
+                        sign = np.sign((ip[0] - xy[0]) * Nx[i] +
+                                           (ip[1] - xy[1]) * Ny[i])
+
+                        #if not self.insidePt.empty:
+
+
+                        Nx[i] *= sign
+                        Ny[i] *= sign
+
+
+                #else:
+                #elif (self.insidePt):
+                #elif hands(self.insidePt) == 2:
+                #elif isinstance(self.insidePt, tuple):
+                elif hasattr(self.insidePt, '__len__'):
+
+                    #print('shouldt be here test')
                     sign = np.sign((self.insidePt[0] - xy[0]) * Nx[i] +
                                    (self.insidePt[1] - xy[1]) * Ny[i])
                     Nx[i] *= sign
                     Ny[i] *= sign
-
 
             for i in range(0, self.swarm.particleLocalCount):
                 scale = 1.0 / np.sqrt(Nx[i]**2 + Ny[i]**2)
@@ -306,8 +349,11 @@ class interface2D(object):
                 Ny[i] *= scale
 
 
+
             self.director.data[:,0] = Nx[:]
             self.director.data[:,1] = Ny[:]
+
+
 
         return
 
