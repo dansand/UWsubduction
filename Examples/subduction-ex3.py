@@ -70,7 +70,7 @@ uw.barrier()
 # * For more information see, `UWsubduction/Background/scaling`
 # 
 
-# In[30]:
+# In[227]:
 
 
 import UWsubduction.params as params 
@@ -91,6 +91,8 @@ md.res = 48
 md.aspectRatio=4
 md.depth *= 1.5
 md.slabInitMaxDepth = 750/2900.
+ndp.lowerMantleViscFac = 10.
+ndp.yieldStressMax *= 0.75
 
 
 # ## Build / refine mesh, Stokes Variables
@@ -515,22 +517,60 @@ nbc = uw.conditions.NeumannCondition( fn_flux=appliedTractionField,
 
 
 #Ridges Temp not enforced
-dirichTempBC = uw.conditions.DirichletCondition(     variable=temperatureField, 
-                                              indexSetsPerDof=(tWalls,) )
+#dirichTempBC = uw.conditions.DirichletCondition(     variable=temperatureField, 
+#                                              indexSetsPerDof=(tWalls,) )
 
 #Ridges enforced
-#dirichTempBC = uw.conditions.DirichletCondition(     variable=temperatureField, 
-#                                              indexSetsPerDof=(tWalls + iWalls,) )
+dirichTempBC = uw.conditions.DirichletCondition(     variable=temperatureField, 
+                                              indexSetsPerDof=(tWalls + iWalls,) )
 
 
 ###If we want thermal ridges fixed
-#temperatureField.data[iWalls.data] = 1.
+temperatureField.data[iWalls.data] = 1.
+
+## Reassert the tempBCS
+temperatureField.data[tWalls.data] = 0.0
+temperatureField.data[bWalls.data] = 1.0
 
 
-# In[192]:
+# In[207]:
 
 
+## set up some swarms to track the boundary velocity
 
+lWallsSwarm = uw.swarm.Swarm(mesh=mesh, particleEscape=False)
+rWallsSwarm = uw.swarm.Swarm(mesh=mesh, particleEscape=False)
+bWallsSwarm = uw.swarm.Swarm(mesh=mesh, particleEscape=False)
+
+dummy = lWallsSwarm.add_particles_with_coordinates(mesh.data[lWalls.data])
+dummy = rWallsSwarm.add_particles_with_coordinates(mesh.data[rWalls.data])
+dummy = bWallsSwarm.add_particles_with_coordinates(mesh.data[bWalls.data])
+
+lWallsVn = uw.swarm.SwarmVariable(lWallsSwarm, 'double', 1)
+rWallsVn = uw.swarm.SwarmVariable(rWallsSwarm, 'double', 1)
+bWallsVn = uw.swarm.SwarmVariable(bWallsSwarm, 'double', 1)
+
+
+# In[220]:
+
+
+def track_boundary_vels():
+    
+    lWallsVn.data[:] = velocityField[0].evaluate(lWalls)
+    lWallsVn.save('output/' + "lWallsVn_" + str(step).zfill(3) + "_.h5")
+    
+    rWallsVn.data[:] = velocityField[0].evaluate(rWalls)
+    rWallsVn.save('output/' + "rWallsVn_" + str(step).zfill(3) + "_.h5")
+    
+    bWallsVn.data[:] = velocityField[1].evaluate(bWalls)
+    bWallsVn.save('output/' + "bWallsVn_" + str(step).zfill(3) + "_.h5")
+
+
+# In[223]:
+
+
+#track_boundary_vels()
+#!ls output
 
 
 # ## Buoyancy
@@ -1015,7 +1055,7 @@ viscSwarmVar =  swarm.add_variable( dataType="double", count=1 )
 viscSwarmVar.data[:] = viscosityMapFn.evaluate(swarm)
 
 
-# In[175]:
+# In[206]:
 
 
 store1 = glucifer.Store('output/subduction1')
@@ -1026,11 +1066,12 @@ store4 = glucifer.Store('output/subduction4')
 
 figTemp = glucifer.Figure(store1, figsize=(960,300) )
 figTemp.append( glucifer.objects.Surface(mesh, temperatureField, onMesh=True))
-figTemp.append( glucifer.objects.Contours(mesh, temperatureField, interval=0.2,  colours='Black', colourBar=False))          
+figTemp.append( glucifer.objects.Contours(mesh, temperatureField, resolution=300, quality =4, interval=0.2,  colours='Black', colourBar=False)) 
+
 
 figVisc = glucifer.Figure( store2, figsize=(960,300) )
 #figVisc.append( glucifer.objects.Points(swarm, viscosityMapFn, pointSize=2, logScale=True) )
-figVisc.append( glucifer.objects.Points(swarm,  viscSwarmVar, logScale=True) )
+figVisc.append( glucifer.objects.Points(swarm,  viscSwarmVar, logScale=True, valueRange = [0.1, 1e4]) )
 
 
 
