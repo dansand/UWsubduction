@@ -132,8 +132,15 @@ class TectonicModel(nx.DiGraph):
     #################################
     def pop_from_dict_of_lists(self, d):
 
-        """Return a graph from a dictionary of lists.
-        Adapted from the networkX function
+        """
+        Return a graph from a dictionary of dicts (adapted from the networkX function)
+        Note that the strategy outlined here only works for the graph adjacency information.
+        Node data doesn't get saved when running nx.to_dict_of_dicts(tm)
+        If node data is needed for checkpointing, the node dictionary (tm.node) will need to be saved separately to tmDict
+
+        >>> tmDict =  nx.to_dict_of_dicts(tm)
+        >>> tm.pop_from_dict_of_lists(_tmDict)
+
 
         """
 
