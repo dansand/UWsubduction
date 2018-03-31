@@ -25,7 +25,7 @@
 
 # ## Imports
 
-# In[27]:
+# In[291]:
 
 
 #use this block to point to a local version of UWsubduction
@@ -37,7 +37,7 @@ except:
     pass
 
 
-# In[28]:
+# In[292]:
 
 
 import os
@@ -53,7 +53,7 @@ import UWsubduction as usub
 
 # ## Create output dir structure
 
-# In[29]:
+# In[293]:
 
 
 #outputPath = os.path.join(os.path.abspath("."),"output/")
@@ -70,7 +70,7 @@ uw.barrier()
 # * For more information see, `UWsubduction/Background/scaling`
 # 
 
-# In[227]:
+# In[294]:
 
 
 import UWsubduction.params as params 
@@ -87,7 +87,7 @@ assert ndimlz(params.paramDict_dim.refLength) == 1.0
 
 # changes to base params (for testing)
 md.faultThickness *= 1.5 #15 km
-md.res = 48
+md.res = 64
 md.aspectRatio=4
 md.depth *= 1.5
 md.slabInitMaxDepth = 750/2900.
@@ -97,7 +97,7 @@ ndp.yieldStressMax *= 0.75
 
 # ## Build / refine mesh, Stokes Variables
 
-# In[31]:
+# In[295]:
 
 
 yres = int(md.res)
@@ -125,7 +125,7 @@ temperatureField.data[:] = 0.
 temperatureDotField.data[:] = 0.
 
 
-# In[32]:
+# In[296]:
 
 
 #mesh.reset() #call to reset mesh nodes to original locations
@@ -149,7 +149,7 @@ if md.refineVert:
         mesh.data[:,1] = mesh.data[:,1] + 1.0
 
 
-# In[33]:
+# In[297]:
 
 
 #figMesh = glucifer.Figure()
@@ -158,7 +158,7 @@ if md.refineVert:
 #figMesh.save_database('test.gldb')
 
 
-# In[34]:
+# In[298]:
 
 
 #assert np.allclose(mesh.maxCoord[1], mesh.data[:,1].max())
@@ -168,7 +168,7 @@ if md.refineVert:
 # 
 # * For more information see, `UWsubduction/Background/tectModel`
 
-# In[35]:
+# In[299]:
 
 
 endTime = ndimlz(30*ur.megayear) 
@@ -176,7 +176,7 @@ refVel = ndimlz(2*ur.cm/ur.year)
 plateModelDt = ndimlz(0.1*ur.megayear)
 
 
-# In[36]:
+# In[300]:
 
 
 #Create tectonic model, add plates
@@ -185,16 +185,16 @@ tm.add_plate(1, velocities=False)
 tm.add_plate(2, velocities=False)
 
 #add plate boundaries
-tm.add_left_boundary(1, plateInitAge=0., velocities=False)
+tm.add_left_boundary(1, plateInitAge=md.slabAge, velocities=False)
 tm.add_subzone(1, 2, md.subZoneLoc, subInitAge=md.slabAge, upperInitAge=md.opAgeAtTrench)
-tm.add_right_boundary(2, plateInitAge=0., velocities=False)
+tm.add_right_boundary(2, plateInitAge=md.opAgeAtTrench, velocities=False)
 
 
 # 
 # 
 # ## Build plate age / temperature Fns
 
-# In[37]:
+# In[301]:
 
 
 pIdFn = tm.plate_id_fn()
@@ -208,7 +208,7 @@ fnAge_map = fn.branching.map(fn_key = pIdFn ,
 #fig.show()
 
 
-# In[38]:
+# In[302]:
 
 
 coordinate = fn.input()
@@ -223,7 +223,7 @@ plateTempProxFn = fn.branching.conditional( ((depthFn > platethickness, ndp.pote
 
 
 
-# In[39]:
+# In[303]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
@@ -233,7 +233,7 @@ plateTempProxFn = fn.branching.conditional( ((depthFn > platethickness, ndp.pote
 
 # ## Make swarm and Swarm Vars
 
-# In[40]:
+# In[304]:
 
 
 swarm = uw.swarm.Swarm(mesh=mesh, particleEscape=True)
@@ -251,7 +251,7 @@ signedDistanceVariable.data[:] = 0.0
 
 # ## Create tmUwMap
 
-# In[41]:
+# In[305]:
 
 
 #Now we have built are primary FEM / Swarm objects, we collect some of these in a dictionary,
@@ -266,7 +266,7 @@ tmUwMap = usub.tm_uw_map([], velocityField, swarm,
 # * For more information see, `UWsubduction/Background/interface2D`
 # 
 
-# In[42]:
+# In[306]:
 
 
 def circGradientFn(S):
@@ -292,7 +292,7 @@ def circGradientFn3(S):
         return min(circGradientFn2(2.6*md.radiusOfCurv - S), -0.1)
 
 
-# In[50]:
+# In[307]:
 
 
 #define fault particle spacing
@@ -317,7 +317,7 @@ fnJointTemp = fn.misc.min(proxyTempVariable,plateTempProxFn)
 proxyTempVariable.data[:] = fnJointTemp.evaluate(swarm)
 
 
-# In[51]:
+# In[308]:
 
 
 #Finally, build the "proximity", i.e. the region immediately around the fault 
@@ -329,7 +329,7 @@ for f in fCollection:
     f.set_proximity_director(swarm, proximityVariable, searchFac = 2., locFac=1.0)
 
 
-# In[53]:
+# In[309]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
@@ -338,7 +338,7 @@ for f in fCollection:
 #fig.save_database('test.gldb')
 
 
-# In[20]:
+# In[310]:
 
 
 #figProx = glucifer.Figure(figsize=(960,300) )
@@ -359,7 +359,7 @@ for f in fCollection:
 # 
 # In this section we setup some functions to help manage the spatial distribution of faults
 
-# In[54]:
+# In[311]:
 
 
 # Setup a swarm to define the replacment positions
@@ -406,14 +406,14 @@ dummy = usub.pop_or_perish(tm, fCollection, faultMasterSwarm, faultAddFn , ds)
 dummy = usub.remove_faults_from_boundaries(tm, fCollection, faultRmfn )
 
 
-# In[55]:
+# In[312]:
 
 
 #maskFn_ = tm.t2f(faultRmfn)
 #pIdFn = tm.plate_id_fn(maskFn=maskFn_)
 
 
-# In[56]:
+# In[313]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
@@ -423,14 +423,14 @@ dummy = usub.remove_faults_from_boundaries(tm, fCollection, faultRmfn )
 
 # ## Project the swarm 'proxy temp' to mesh
 
-# In[57]:
+# In[314]:
 
 
 projectorMeshTemp= uw.utils.MeshVariable_Projection( temperatureField, proxyTempVariable , type=0 )
 projectorMeshTemp.solve()
 
 
-# In[58]:
+# In[315]:
 
 
 #figTemp = glucifer.Figure()
@@ -443,13 +443,13 @@ projectorMeshTemp.solve()
 
 # ## Boundary conditions
 
-# In[59]:
+# In[316]:
 
 
 appliedTractionField = uw.mesh.MeshVariable( mesh=mesh,    nodeDofCount=2 )
 
 
-# In[60]:
+# In[317]:
 
 
 iWalls = mesh.specialSets["MinI_VertexSet"] + mesh.specialSets["MaxI_VertexSet"]
@@ -461,79 +461,100 @@ lWalls = mesh.specialSets["MinI_VertexSet"]
 rWalls = mesh.specialSets["MaxI_VertexSet"]
 
 
-# In[76]:
+# In[358]:
 
 
-pressureGrad = fn.misc.constant(0.)
+pressureDiff = ndimlz(5*ur.megapascal)
 
-lithPressureFn = depthFn * pressureGrad
+umTaper = (1. - usub.cosine_taper(depthFn, md.lowerMantleDepth, ndimlz(50*ur.kilometer) ))
+plateLambda = 0.9
+platethickness = plateLambda*2.32*np.math.sqrt(1.*md.slabAge) #redefining a var (uw Fn) we no longer need
+lithTaper = usub.cosine_taper(depthFn, platethickness, ndimlz(20*ur.kilometer) )
+
+pressureFn = 0.5*(lithTaper*umTaper)*pressureDiff
+
+
+# In[360]:
+
+
+#fig = glucifer.Figure()
+#fig.append( glucifer.objects.Surface(mesh, pressureFn, onMesh=True))
+#fig.show()
+
+
+# In[344]:
+
+
 
 
 if lWalls.data.shape[0]:
-    appliedTractionField.data[[lWalls.data]]=  np.column_stack((lithPressureFn.evaluate(lWalls), 
+    appliedTractionField.data[[lWalls.data]]=  np.column_stack((pressureFn.evaluate(lWalls), 
                                                             np.zeros(len(lWalls.data)) ))
+
+#because of the sign, this acts as a negative pressure, trying to push material out of the domain
 if rWalls.data.shape[0]:
-    appliedTractionField.data[[rWalls.data]]=  np.column_stack((-1*lithPressureFn.evaluate(rWalls), 
-                                                            np.zeros(len(rWalls.data)) ))
-if bWalls.data.shape[0]:
-    appliedTractionField.data[[bWalls.data]]=  np.column_stack(( np.zeros(len(bWalls.data))  , 
-                                                            lithPressureFn.evaluate(bWalls) ) )
+    appliedTractionField.data[[rWalls.data]]=  np.column_stack((pressureFn.evaluate(rWalls),
+                                                                np.zeros(len(rWalls.data)) ))
+  
 
 
-# In[77]:
+
+#pressureGrad = fn.misc.constant(0.)
+#lithPressureFn = depthFn * pressureGrad
+#if lWalls.data.shape[0]:
+#    appliedTractionField.data[[lWalls.data]]=  np.column_stack((lithPressureFn.evaluate(lWalls), 
+#                                                            np.zeros(len(lWalls.data)) ))
+#if rWalls.data.shape[0]:
+#    appliedTractionField.data[[rWalls.data]]=  np.column_stack((-1*lithPressureFn.evaluate(rWalls), 
+#                                                            np.zeros(len(rWalls.data)) ))
+
+
+# In[345]:
 
 
 vxId = bWalls & rWalls 
 fixedVxNodes  = mesh.specialSets["Empty"]
 fixedVxNodes  += vxId
 
-#velBC = uw.conditions.DirichletCondition( variable      = velocityField, 
-#                                               indexSetsPerDof = (iWalls , jWalls) )
-
-
 ########
 #For open Sidewalls
 ########
 
 velBC = uw.conditions.DirichletCondition( variable      = velocityField, 
-                                               indexSetsPerDof = (fixedVxNodes, tWalls + iWalls) )
+                                               indexSetsPerDof = (fixedVxNodes, jWalls + iWalls) )
 
 r_sub = rWalls - bWalls
-b_sub = bWalls - rWalls
 
-#note that b_sub is probably at the wrong loc herre, 
-#though becase I'm applying zero tractions there is actually no difference. 
 nbc = uw.conditions.NeumannCondition( fn_flux=appliedTractionField, 
                                       variable=velocityField,
-                                      indexSetsPerDof=(lWalls + r_sub, b_sub ) )
+                                      indexSetsPerDof=(lWalls + r_sub, None ) )
 
 
-#nbc = uw.conditions.NeumannCondition( fn_flux=appliedTractionField, 
-#                                      variable=velocityField,
-#                                      indexSetsPerDof=(lWalls +  r_sub, None) )
-
-
-# In[78]:
+# In[346]:
 
 
 #Ridges Temp not enforced
-#dirichTempBC = uw.conditions.DirichletCondition(     variable=temperatureField, 
-#                                              indexSetsPerDof=(tWalls,) )
-
-#Ridges enforced
 dirichTempBC = uw.conditions.DirichletCondition(     variable=temperatureField, 
-                                              indexSetsPerDof=(tWalls + iWalls,) )
+                                              indexSetsPerDof=(tWalls,) )
 
 
-###If we want thermal ridges fixed
-temperatureField.data[iWalls.data] = 1.
 
 ## Reassert the tempBCS
 temperatureField.data[tWalls.data] = 0.0
 temperatureField.data[bWalls.data] = 1.0
 
 
-# In[207]:
+#Alternatively, uncomment these to enforce thermal ridges at the sidewalls
+
+#dirichTempBC = uw.conditions.DirichletCondition(     variable=temperatureField, 
+#                                              indexSetsPerDof=(tWalls + iWalls,) )
+
+
+###If we want thermal ridges fixed
+#temperatureField.data[iWalls.data] = 1.
+
+
+# In[322]:
 
 
 ## set up some swarms to track the boundary velocity
@@ -551,7 +572,7 @@ rWallsVn = uw.swarm.SwarmVariable(rWallsSwarm, 'double', 1)
 bWallsVn = uw.swarm.SwarmVariable(bWallsSwarm, 'double', 1)
 
 
-# In[220]:
+# In[323]:
 
 
 def track_boundary_vels():
@@ -566,16 +587,17 @@ def track_boundary_vels():
     bWallsVn.save('output/' + "bWallsVn_" + str(step).zfill(3) + "_.h5")
 
 
-# In[223]:
+# In[324]:
 
 
 #track_boundary_vels()
 #!ls output
+#md.buoyancyFac
 
 
 # ## Buoyancy
 
-# In[64]:
+# In[325]:
 
 
 temperatureFn = temperatureField
@@ -591,88 +613,15 @@ gravity = ( 0.0, -1.0 )
 buoyancyMapFn = thermalDensityFn*gravity
 
 
-# In[123]:
+# In[326]:
 
 
-#setup density integral
-
-densIntegral = uw.utils.Integral(thermalDensityFn, mesh, integrationType='volume')
-densIntegralVal = densIntegral.evaluate()[0]
-
-platethickness = 2.32*np.math.sqrt(1.*md.slabAge) #redefining a var (uw Fn) we no longer need
-
-plateRegionFn = depthFn < platethickness
-plateRegionFn = tm.b2f(plateRegionFn)
-
-
-plateDensIntegral = uw.utils.Integral(plateRegionFn*thermalDensityFn, mesh, integrationType='volume')
-plateDensIntegralVal = plateDensIntegral.evaluate()[0]
-
-
-# In[195]:
-
-
-vxId2 = lWalls & bWalls 
-fixedVxNodes2  = mesh.specialSets["Empty"]
-fixedVxNodes2  += vxId2
-
-def update_boundary_pressure():
-
-    totWidth = (mesh.maxCoord[0] - mesh.minCoord[0])
-    totDepth = (mesh.maxCoord[1] - mesh.minCoord[1])
-    totVolume = totWidth*totDepth
-
-
-    densIntegralVal = densIntegral.evaluate()[0]
-    platedensIntegralVal = plateDensIntegral.evaluate()[0]
-    baseAveragePressureVal = (densIntegralVal/(totVolume))/(mesh.maxCoord[0] - mesh.minCoord[0])
-    baseAveragePressureFn = fn.misc.constant(baseAveragePressureVal)
-
-    #apply to base
-
-    if bWalls.data.shape[0]:
-        appliedTractionField.data[[bWalls.data]]=  np.column_stack(( np.zeros(len(bWalls.data))  , 
-                                                                baseAveragePressureFn.evaluate(bWalls) ) )
-
-    #apply to sides
-    plateDensFac = platedensIntegralVal/densIntegralVal
-
-    plateSidePressFn = baseAveragePressureVal*plateDensFac*(depthFn/platethickness)
-
-    mantleSidePressFn  = baseAveragePressureVal*plateDensFac +                           (1. - plateDensFac)*baseAveragePressureVal*((depthFn - platethickness)/(totDepth -  platethickness))
-
-    sidePressFn =  fn.branching.conditional( ((depthFn < platethickness, plateSidePressFn ), 
-                                               (True,                      mantleSidePressFn)  ))
-    
-    if lWalls.data.shape[0]:
-        appliedTractionField.data[[lWalls.data]]=  np.column_stack((sidePressFn.evaluate(lWalls), 
-                                                            np.zeros(len(lWalls.data)) ))
-    if rWalls.data.shape[0]:
-        appliedTractionField.data[[rWalls.data]]=  np.column_stack((-1*sidePressFn.evaluate(rWalls), 
-                                                                np.zeros(len(rWalls.data)) ))
-        
-    
-    #fix the bottom LHS corner
-    
-    appliedTractionField.data[[fixedVxNodes2.data]] = (baseAveragePressureVal, baseAveragePressureVal)
-    appliedTractionField.data[[fixedVxNodes2.data]] 
-
-
-# In[201]:
-
-
-#baseAveragePressureVal
-
-
-# In[163]:
-
-
-update_boundary_pressure()
+#update_boundary_pressure()
 
 
 # ## Rheology
 
-# In[164]:
+# In[327]:
 
 
 symStrainrate = fn.tensor.symmetric( 
@@ -911,12 +860,6 @@ def update_faults():
     
 
 
-# In[155]:
-
-
-
-
-
 # In[50]:
 
 
@@ -1142,9 +1085,6 @@ while time < tm.times[-1] and step < maxSteps:
     time, step =  advect_update(dt)
     dt_model += dt
     
-    if step % update_pressure == 0:
-        update_boundary_pressure()
-    
         
     #update tectonic model and associated mask functions
     if step % steps_update_model == 0:
@@ -1203,18 +1143,20 @@ while time < tm.times[-1] and step < maxSteps:
         print 'step = {0:6d}; time = {1:.3e}'.format(step,time)
 
 
+# ## Scratch
+
 # In[182]:
 
 
 
 
 
-# In[184]:
+# In[289]:
 
 
 #%pylab inline
 #fig, ax = plt.subplots()
-#ax.plot(  appliedTractionField.evaluate(rWalls)[:,0], depthFn.evaluate(lWalls)*2900, )
+#ax.plot(  appliedTractionField.evaluate(rWalls)[:,0], depthFn.evaluate(lWalls)*2900)
 #ax.set_ylim(1500, -10)
 #update_boundary_pressure()
 
@@ -1222,12 +1164,78 @@ while time < tm.times[-1] and step < maxSteps:
 # In[189]:
 
 
-fig, ax = plt.subplots()
-ax.plot(  coordinate[0].evaluate(bWalls)*2900, velocityField.data[bWalls.data][:,1] )
+#fig, ax = plt.subplots()
+#ax.plot(  coordinate[0].evaluate(bWalls)*2900, velocityField.data[bWalls.data][:,1] )
 
 
-# In[191]:
+# In[ ]:
 
 
-#appliedTractionField.evaluate(bWalls)
+##some stuff I was working on try to get stress boundary condition on sides + bottom
+
+
+#setup density integral
+
+densIntegral = uw.utils.Integral(thermalDensityFn, mesh, integrationType='volume')
+densIntegralVal = densIntegral.evaluate()[0]
+
+#platethickness = 2.32*np.math.sqrt(1.*md.slabAge) #redefining a var (uw Fn) we no longer need
+platethickness = 0. #redefining a var (uw Fn) we no longer need
+
+
+plateRegionFn = depthFn < platethickness
+plateRegionFn = tm.b2f(plateRegionFn)
+
+
+plateDensIntegral = uw.utils.Integral(plateRegionFn*thermalDensityFn, mesh, integrationType='volume')
+plateDensIntegralVal = plateDensIntegral.evaluate()[0]
+
+
+
+vxId2 = lWalls & bWalls 
+fixedVxNodes2  = mesh.specialSets["Empty"]
+fixedVxNodes2  += vxId2
+
+def update_boundary_pressure():
+
+    totWidth = (mesh.maxCoord[0] - mesh.minCoord[0])
+    totDepth = (mesh.maxCoord[1] - mesh.minCoord[1])
+    totVolume = totWidth*totDepth
+
+
+    densIntegralVal = densIntegral.evaluate()[0]
+    platedensIntegralVal = plateDensIntegral.evaluate()[0]
+    baseAveragePressureVal = (densIntegralVal/(totVolume))/(mesh.maxCoord[0] - mesh.minCoord[0])
+    baseAveragePressureFn = fn.misc.constant(baseAveragePressureVal)
+
+    #apply to base
+
+    if bWalls.data.shape[0]:
+        appliedTractionField.data[[bWalls.data]]=  np.column_stack(( np.zeros(len(bWalls.data))  , 
+                                                                baseAveragePressureFn.evaluate(bWalls) ) )
+
+    #apply to sides
+    plateDensFac = platedensIntegralVal/densIntegralVal
+
+    plateSidePressFn = baseAveragePressureVal*plateDensFac*(depthFn/platethickness)
+
+    mantleSidePressFn  = baseAveragePressureVal*plateDensFac +                           (1. - plateDensFac)*baseAveragePressureVal*((depthFn - platethickness)/(totDepth -  platethickness))
+
+    #sidePressFn =  fn.branching.conditional( ((depthFn < platethickness, plateSidePressFn ), 
+    #                                           (True,                      mantleSidePressFn)  ))
+    
+    sidePressFn = baseAveragePressureFn
+    
+    if lWalls.data.shape[0]:
+        appliedTractionField.data[[lWalls.data]]=  np.column_stack((sidePressFn.evaluate(lWalls), 
+                                                            np.zeros(len(lWalls.data)) ))
+    if rWalls.data.shape[0]:
+        appliedTractionField.data[[rWalls.data]]=  np.column_stack((-1*sidePressFn.evaluate(rWalls), 
+                                                                np.zeros(len(rWalls.data)) ))
+        
+    
+    #fix the bottom LHS corner
+    
+    appliedTractionField.data[[fixedVxNodes2.data]] = (baseAveragePressureVal, baseAveragePressureVal)
+    appliedTractionField.data[[fixedVxNodes2.data]] 
 

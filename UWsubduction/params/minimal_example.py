@@ -14,6 +14,7 @@ u = UnitRegistry
 
 #####################
 #A set of physical parameters, that can be used to run basic subduction simulations
+#mainly intended as a quick go-to for the UWsubduction Examples
 #####################
 
 #pd refers to dimensional paramters
