@@ -25,7 +25,7 @@
 
 # ## Imports
 
-# In[291]:
+# In[1]:
 
 
 #use this block to point to a local version of UWsubduction
@@ -37,7 +37,7 @@ except:
     pass
 
 
-# In[292]:
+# In[2]:
 
 
 import os
@@ -53,7 +53,7 @@ import UWsubduction as usub
 
 # ## Create output dir structure
 
-# In[293]:
+# In[3]:
 
 
 #outputPath = os.path.join(os.path.abspath("."),"output/")
@@ -70,7 +70,7 @@ uw.barrier()
 # * For more information see, `UWsubduction/Background/scaling`
 # 
 
-# In[294]:
+# In[4]:
 
 
 import UWsubduction.params as params 
@@ -97,7 +97,7 @@ ndp.yieldStressMax *= 0.75
 
 # ## Build / refine mesh, Stokes Variables
 
-# In[295]:
+# In[5]:
 
 
 yres = int(md.res)
@@ -125,7 +125,7 @@ temperatureField.data[:] = 0.
 temperatureDotField.data[:] = 0.
 
 
-# In[296]:
+# In[6]:
 
 
 #mesh.reset() #call to reset mesh nodes to original locations
@@ -149,7 +149,7 @@ if md.refineVert:
         mesh.data[:,1] = mesh.data[:,1] + 1.0
 
 
-# In[297]:
+# In[7]:
 
 
 #figMesh = glucifer.Figure()
@@ -158,7 +158,7 @@ if md.refineVert:
 #figMesh.save_database('test.gldb')
 
 
-# In[298]:
+# In[8]:
 
 
 #assert np.allclose(mesh.maxCoord[1], mesh.data[:,1].max())
@@ -168,7 +168,7 @@ if md.refineVert:
 # 
 # * For more information see, `UWsubduction/Background/tectModel`
 
-# In[299]:
+# In[9]:
 
 
 endTime = ndimlz(30*ur.megayear) 
@@ -176,7 +176,7 @@ refVel = ndimlz(2*ur.cm/ur.year)
 plateModelDt = ndimlz(0.1*ur.megayear)
 
 
-# In[300]:
+# In[10]:
 
 
 #Create tectonic model, add plates
@@ -194,7 +194,7 @@ tm.add_right_boundary(2, plateInitAge=md.opAgeAtTrench, velocities=False)
 # 
 # ## Build plate age / temperature Fns
 
-# In[301]:
+# In[11]:
 
 
 pIdFn = tm.plate_id_fn()
@@ -208,7 +208,7 @@ fnAge_map = fn.branching.map(fn_key = pIdFn ,
 #fig.show()
 
 
-# In[302]:
+# In[12]:
 
 
 coordinate = fn.input()
@@ -223,7 +223,7 @@ plateTempProxFn = fn.branching.conditional( ((depthFn > platethickness, ndp.pote
 
 
 
-# In[303]:
+# In[13]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
@@ -233,7 +233,7 @@ plateTempProxFn = fn.branching.conditional( ((depthFn > platethickness, ndp.pote
 
 # ## Make swarm and Swarm Vars
 
-# In[304]:
+# In[14]:
 
 
 swarm = uw.swarm.Swarm(mesh=mesh, particleEscape=True)
@@ -251,7 +251,7 @@ signedDistanceVariable.data[:] = 0.0
 
 # ## Create tmUwMap
 
-# In[305]:
+# In[15]:
 
 
 #Now we have built are primary FEM / Swarm objects, we collect some of these in a dictionary,
@@ -266,7 +266,7 @@ tmUwMap = usub.tm_uw_map([], velocityField, swarm,
 # * For more information see, `UWsubduction/Background/interface2D`
 # 
 
-# In[306]:
+# In[16]:
 
 
 def circGradientFn(S):
@@ -292,7 +292,7 @@ def circGradientFn3(S):
         return min(circGradientFn2(2.6*md.radiusOfCurv - S), -0.1)
 
 
-# In[307]:
+# In[17]:
 
 
 #define fault particle spacing
@@ -317,7 +317,7 @@ fnJointTemp = fn.misc.min(proxyTempVariable,plateTempProxFn)
 proxyTempVariable.data[:] = fnJointTemp.evaluate(swarm)
 
 
-# In[308]:
+# In[18]:
 
 
 #Finally, build the "proximity", i.e. the region immediately around the fault 
@@ -329,7 +329,7 @@ for f in fCollection:
     f.set_proximity_director(swarm, proximityVariable, searchFac = 2., locFac=1.0)
 
 
-# In[309]:
+# In[19]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
@@ -338,7 +338,7 @@ for f in fCollection:
 #fig.save_database('test.gldb')
 
 
-# In[310]:
+# In[20]:
 
 
 #figProx = glucifer.Figure(figsize=(960,300) )
@@ -359,7 +359,7 @@ for f in fCollection:
 # 
 # In this section we setup some functions to help manage the spatial distribution of faults
 
-# In[311]:
+# In[21]:
 
 
 # Setup a swarm to define the replacment positions
@@ -406,14 +406,14 @@ dummy = usub.pop_or_perish(tm, fCollection, faultMasterSwarm, faultAddFn , ds)
 dummy = usub.remove_faults_from_boundaries(tm, fCollection, faultRmfn )
 
 
-# In[312]:
+# In[22]:
 
 
 #maskFn_ = tm.t2f(faultRmfn)
 #pIdFn = tm.plate_id_fn(maskFn=maskFn_)
 
 
-# In[313]:
+# In[23]:
 
 
 #fig = glucifer.Figure(figsize=(600, 300))
@@ -423,14 +423,14 @@ dummy = usub.remove_faults_from_boundaries(tm, fCollection, faultRmfn )
 
 # ## Project the swarm 'proxy temp' to mesh
 
-# In[314]:
+# In[24]:
 
 
 projectorMeshTemp= uw.utils.MeshVariable_Projection( temperatureField, proxyTempVariable , type=0 )
 projectorMeshTemp.solve()
 
 
-# In[315]:
+# In[25]:
 
 
 #figTemp = glucifer.Figure()
@@ -443,13 +443,13 @@ projectorMeshTemp.solve()
 
 # ## Boundary conditions
 
-# In[316]:
+# In[26]:
 
 
 appliedTractionField = uw.mesh.MeshVariable( mesh=mesh,    nodeDofCount=2 )
 
 
-# In[317]:
+# In[27]:
 
 
 iWalls = mesh.specialSets["MinI_VertexSet"] + mesh.specialSets["MaxI_VertexSet"]
@@ -461,39 +461,63 @@ lWalls = mesh.specialSets["MinI_VertexSet"]
 rWalls = mesh.specialSets["MaxI_VertexSet"]
 
 
-# In[358]:
+# In[88]:
 
 
 pressureDiff = ndimlz(5*ur.megapascal)
 
-umTaper = (1. - usub.cosine_taper(depthFn, md.lowerMantleDepth, ndimlz(50*ur.kilometer) ))
-plateLambda = 0.9
-platethickness = plateLambda*2.32*np.math.sqrt(1.*md.slabAge) #redefining a var (uw Fn) we no longer need
-lithTaper = usub.cosine_taper(depthFn, platethickness, ndimlz(20*ur.kilometer) )
+plateThermalTaper = usub.cosine_taper(temperatureField, 0.9, 0.01)
+platePressureFn = (1. - plateThermalTaper)*params.rayleighNumber*depthFn
+pressMinMax = fn.view.min_max(platePressureFn)
+ignore = pressMinMax.evaluate(lWalls)
+lhsPressMax = pressMinMax.max_global()
+pressMinMax.reset()
+ignore = pressMinMax.evaluate(rWalls)
+rhsPressMax = pressMinMax.max_global()
+lhsPressMax, rhsPressMax
 
-pressureFn = 0.5*(lithTaper*umTaper)*pressureDiff
+lhsPressFn = -1.*platePressureFn + -1.*plateThermalTaper*(max(lhsPressMax, rhsPressMax )) + 0.5*pressureDiff
+rhsPressFn = platePressureFn + plateThermalTaper*(max(lhsPressMax, rhsPressMax )) + 0.5*pressureDiff
 
 
-# In[360]:
+# In[91]:
+
+
+#plt.plot(rhsPressFn.evaluate(rWalls) + lhsPressFn.evaluate(lWalls) )
+#plt.plot(rhsPressFn.evaluate(rWalls))
+#plt.plot(lhsPressFn.evaluate(lWalls))
+
+
+# In[55]:
+
+
+#umTaper = (1. - usub.cosine_taper(depthFn, md.lowerMantleDepth, ndimlz(50*ur.kilometer) ))
+#plateLambda = 0.9
+#platethickness = plateLambda*2.32*np.math.sqrt(1.*md.slabAge) #redefining a var (uw Fn) we no longer need
+#lithTaper = usub.cosine_taper(depthFn, platethickness, ndimlz(20*ur.kilometer) )
+#pressureFn = 0.5*(lithTaper*umTaper)*pressureDiff
+
+
+# In[56]:
 
 
 #fig = glucifer.Figure()
-#fig.append( glucifer.objects.Surface(mesh, pressureFn, onMesh=True))
+#fig.append( glucifer.objects.Surface(mesh, platePressureFn , onMesh=True))
 #fig.show()
 
 
-# In[344]:
+# In[63]:
 
 
 
 
 if lWalls.data.shape[0]:
-    appliedTractionField.data[[lWalls.data]]=  np.column_stack((pressureFn.evaluate(lWalls), 
+    appliedTractionField.data[[lWalls.data]]=  np.column_stack((lhsPressFn.evaluate(lWalls), 
                                                             np.zeros(len(lWalls.data)) ))
 
 #because of the sign, this acts as a negative pressure, trying to push material out of the domain
 if rWalls.data.shape[0]:
-    appliedTractionField.data[[rWalls.data]]=  np.column_stack((pressureFn.evaluate(rWalls),
+    appliedTractionField.data[[rWalls.data]]=  np.column_stack((rhsPressFn.evaluate(rWalls),
                                                                 np.zeros(len(rWalls.data)) ))
   
 
@@ -509,7 +533,7 @@ if rWalls.data.shape[0]:
 #                                                            np.zeros(len(rWalls.data)) ))
 
 
-# In[345]:
+# In[64]:
 
 
 vxId = bWalls & rWalls 
@@ -530,7 +554,7 @@ nbc = uw.conditions.NeumannCondition( fn_flux=appliedTractionField,
                                       indexSetsPerDof=(lWalls + r_sub, None ) )
 
 
-# In[346]:
+# In[65]:
 
 
 #Ridges Temp not enforced
@@ -554,7 +578,7 @@ temperatureField.data[bWalls.data] = 1.0
 #temperatureField.data[iWalls.data] = 1.
 
 
-# In[322]:
+# In[66]:
 
 
 ## set up some swarms to track the boundary velocity
@@ -572,7 +596,7 @@ rWallsVn = uw.swarm.SwarmVariable(rWallsSwarm, 'double', 1)
 bWallsVn = uw.swarm.SwarmVariable(bWallsSwarm, 'double', 1)
 
 
-# In[323]:
+# In[67]:
 
 
 def track_boundary_vels():
@@ -1238,4 +1262,10 @@ def update_boundary_pressure():
     
     appliedTractionField.data[[fixedVxNodes2.data]] = (baseAveragePressureVal, baseAveragePressureVal)
     appliedTractionField.data[[fixedVxNodes2.data]] 
+
+
+# In[85]:
+
+
+#%pylab inline
 
