@@ -394,10 +394,11 @@ class interface2D(object):
 
 
         #everthing in the min dist halo becomes fault.
-        mask = np.logical_and(sd< locFacPos*thickness,           #positive side of fault
-                              sd> locFacNeg*thickness)[:,0]      #negative side of fault
+        if not self.empty:
+            mask = np.logical_and(sd< locFacPos*thickness,           #positive side of fault
+                                  sd> locFacNeg*thickness)[:,0]      #negative side of fault
 
-        proximityVar.data[mask] = self.ID                      #set to Id
+            proximityVar.data[mask] = self.ID                      #set to Id
 
         #################
         #Part2
