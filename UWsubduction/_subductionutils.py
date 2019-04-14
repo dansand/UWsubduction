@@ -1,6 +1,6 @@
 import numpy as np
 import math
-#from easydict import EasyDict as edict
+from easydict import EasyDict as edict
 from interfaces import interface2D , interface_collection
 from underworld import function as fn
 
@@ -104,16 +104,16 @@ def linearGradientFn(S):
 
 
 
-#def tm_uw_map(tempField, velField, swarm, signedDistanceVar, proxyTempVar, proximityVar):
+def tm_uw_map(tempField, velField, swarm, signedDistanceVar, proxyTempVar, proximityVar):
 
-#    mapDict = edict()
-#    mapDict['tempField'] = tempField
-#    mapDict['velField'] = velField
-#    mapDict['swarm'] = swarm
-#    mapDict['signedDistanceVar'] = signedDistanceVar
-#    mapDict['proxyTempVar'] = proxyTempVar
-#    mapDict['proximityVar'] = proximityVar
-#    return mapDict
+    mapDict = edict()
+    mapDict['tempField'] = tempField
+    mapDict['velField'] = velField
+    mapDict['swarm'] = swarm
+    mapDict['signedDistanceVar'] = signedDistanceVar
+    mapDict['proxyTempVar'] = proxyTempVar
+    mapDict['proximityVar'] = proximityVar
+    return mapDict
 
 def build_slab_distance(tectModel, plates, gradFn, maxDepth, tmUwMap):
 
