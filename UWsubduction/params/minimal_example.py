@@ -4,10 +4,13 @@ import numpy as np
 import pint
 
 #atm the paths differ in master/dev
-try:
-    import unsupported.scaling as scaling;
-except:
-    import unsupported.geodynamics.scaling as scaling;
+#try:
+#    import unsupported.scaling as scaling;
+#except:
+#    import unsupported.geodynamics.scaling as scaling;
+from underworld import scaling as scaling;
+
+
 
 UnitRegistry = scaling.UnitRegistry
 u = UnitRegistry
