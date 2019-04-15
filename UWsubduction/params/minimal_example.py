@@ -2,6 +2,7 @@ from easydict import EasyDict as edict
 import math
 import numpy as np
 import pint
+from pint import UnitRegistry
 
 #atm the paths differ in master/dev
 #try:
@@ -12,8 +13,8 @@ from underworld import scaling as scaling;
 
 
 
-UnitRegistry = scaling.UnitRegistry
-u = UnitRegistry
+#UnitRegistry = pint.UnitRegistry
+u = UnitRegistry()
 
 #####################
 #A set of physical parameters, that can be used to run basic subduction simulations
