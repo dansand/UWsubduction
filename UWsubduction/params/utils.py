@@ -12,7 +12,7 @@ def build_nondim_dict(d, sca):
             if val.unitless:
                 ndd[key] = val.magnitude
             else:
-                ndd[key] = sca.nonDimensionalize(val)
+                ndd[key] = sca.non_dimensionalise(val)
 
         else:
             ndd[key] = val
