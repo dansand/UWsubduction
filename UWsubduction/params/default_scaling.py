@@ -22,10 +22,12 @@ KT = pd.potentialTemp - pd.surfaceTemp
 Kt = KL**2/pd.refDiffusivity
 KM = pd.refViscosity * KL * Kt
 
-sub_scaling.scaling["[length]"]      = KL.to_base_units()
-sub_scaling.scaling["[temperature]"] = KT.to_base_units()
-sub_scaling.scaling["[mass]"]        = KM.to_base_units()
-sub_scaling.scaling["[time]"] =        Kt.to_base_units()
+scaling_coefficients = sub_scaling.get_coefficients()
+
+scaling_coefficients["[length]"]      = KL.to_base_units()
+scaling_coefficients["[temperature]"] = KT.to_base_units()
+scaling_coefficients["[mass]"]        = KM.to_base_units()
+scaling_coefficients["[time]"] =        Kt.to_base_units()
 
 
 #####################
