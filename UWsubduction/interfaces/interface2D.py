@@ -187,14 +187,11 @@ class interface2D(object):
 
         if uw.nProcs() == 1 or self.director.data_shadow.shape[0] == 0:
             fdirector = self.director.data
-            #print('1')
         elif self.director.data.shape[0] == 0:
                 fdirector = self.director.data_shadow
-            #print('2')
         else:
             fdirector = np.concatenate((self.director.data,
                                     self.director.data_shadow))
-            #print('3')
 
         director[fpts] = fdirector[p[fpts]]
 
@@ -337,7 +334,6 @@ class interface2D(object):
                 #elif isinstance(self.insidePt, tuple):
                 elif hasattr(self.insidePt, '__len__'):
 
-                    #print('shouldt be here test')
                     sign = np.sign((self.insidePt[0] - xy[0]) * Nx[i] +
                                    (self.insidePt[1] - xy[1]) * Ny[i])
                     Nx[i] *= sign
@@ -505,7 +501,6 @@ class interface2D(object):
         localData.astype(dtype=np.float64)
 
         globalShape = self.swarm.particleGlobalCount
-        #print(localData.shape, globalShape)
 
         sendbuf = localData
         #recvbuf = np.empty([globalShape,2])
@@ -682,7 +677,7 @@ class interface_collection(list):
                 if isinstance(interface, interface2D):
                     super(interface_collection, self).append(interface)
                 else:
-                    print "Non interface object ", interface, " not added to collection"
+                    print ("Non interface object ", interface, " not added to collection")
 
         return
 
@@ -693,7 +688,7 @@ class interface_collection(list):
         if isinstance(interface, interface2D): #
             super(interface_collection, self).append(interface)
         else:
-            print "Non interface object ", line, " not added to collection"
+            print ("Non interface object ", line, " not added to collection")
 
 
     ## Note that this is strictly 2D  !
