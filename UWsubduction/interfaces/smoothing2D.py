@@ -1,5 +1,5 @@
 #
-from interface2D import *
+from UWsubduction.interfaces.interface2D import *
 import numpy as np
 
 def particlesToAdd(interface2D, A, _lowdist, _updist = False):
