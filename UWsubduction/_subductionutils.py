@@ -1,7 +1,7 @@
 import numpy as np
 import math
 from easydict import EasyDict as edict
-from UWsubduction.UWsubduction.interfaces import interface2D , interface_collection
+from UWsubduction.interfaces import interface2D , interface_collection
 from underworld import function as fn
 
 
