@@ -1,2 +1,2 @@
-from UWsubduction.analyis._analysis import *
-from UWsubduction.analyis._spectral_tools import *
+from UWsubduction.analysis._analysis import *
+from UWsubduction.analysis._spectral_tools import *
