@@ -2,6 +2,7 @@ import os
 import sys
 import pickle
 import underworld as uw
+from collections import OrderedDict
 
 
 
@@ -21,9 +22,9 @@ class checkpoint:
     def __init__(self, savepath, loadpath='default', uwContext = uw):
 
         assert uwContext, "no underworld"
-        self.objDict = {}
-        self.dictDict = {}
-        self.measuresDict = {}
+        self.objDict = OrderedDict()
+        self.dictDict = OrderedDict()
+        self.measuresDict = OrderedDict()
 
         state = {'time':0., 'step':0}
         self.addDict(state, 'state')
@@ -142,7 +143,7 @@ class checkpoint:
                 os.makedirs(actualpath)
 
 
-        #self.uwContext.mpi.barrier()
+        self.uwContext.mpi.barrier()
 
         #now save the object with the
         for key, val in self.objDict.items():
