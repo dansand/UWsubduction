@@ -76,7 +76,7 @@ outputPath = os.path.join(os.path.abspath("."),"output/files")
 if uw.rank()==0:
     if not os.path.exists(outputPath):
         os.makedirs(outputPath)
-uw.barrier()
+uw.mpi.barrier()
 
 
 # ## Parameters / Scaling
@@ -896,7 +896,7 @@ outputPath = os.path.join(os.path.abspath("."),"output/files")
 if uw.rank()==0:
     if not os.path.exists(outputPath):
         os.makedirs(outputPath)
-uw.barrier()
+uw.mpi.barrier()
 
 
 surfacexs = mesh.data[tWalls.data][:,0]
@@ -1028,7 +1028,7 @@ outputPath = os.path.join(os.path.abspath("."),"output/")
 if uw.rank()==0:
     if not os.path.exists(outputPath):
         os.makedirs(outputPath)
-uw.barrier()
+uw.mpi.barrier()
 
 
 # In[78]:

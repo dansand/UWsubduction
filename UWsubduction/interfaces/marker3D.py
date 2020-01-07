@@ -93,7 +93,7 @@ class markerSurface3D(object):
         self._update_kdtree()
         self._update_surface_normals()
 
-        uw.barrier()
+        uw.mpi.barrier()
 
         return
 

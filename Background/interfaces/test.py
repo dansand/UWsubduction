@@ -131,7 +131,7 @@ line.add_points(testPs[:,0], testPs[:,1])
 #now assign the refline as the insidePt for the line
 line.insidePt = refline
 
-uw.barrier()
+uw.mpi.barrier()
 
 print(isinstance(line.insidePt, usub.interface2D))
 

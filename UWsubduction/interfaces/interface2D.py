@@ -113,7 +113,7 @@ class interface2D(object):
         self._update_kdtree()
         self._update_surface_normals()
 
-        uw.barrier()
+        uw.mpi.barrier()
 
         return
 
@@ -316,7 +316,7 @@ class interface2D(object):
                         #r, nindex = self.insidePt.kdtree.query(particle_coords[i], k=1)
 
                         ip = insidepoints[i]
-                        #uw.barrier()
+                        #uw.mpi.barrier()
 
                         sign = np.sign((ip[0] - xy[0]) * Nx[i] +
                                            (ip[1] - xy[1]) * Ny[i])

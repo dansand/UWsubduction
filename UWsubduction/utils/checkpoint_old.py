@@ -39,7 +39,7 @@ class checkpoint:
         if self.uwContext.rank()==0:
             if not os.path.isdir(self.savepath):
                 os.makedirs(self.savepath)
-        uwContext.barrier()
+        uwContext.mpi.barrier()
 
         #check the savepath for any subdirs representing checkpoints - default behav.
         if loadpath == 'default':
@@ -121,7 +121,7 @@ class checkpoint:
 
 
 
-        self.uwContext.barrier()
+        self.uwContext.mpi.barrier()
         #now save the object with the
         for key, val in self.objDict.items():
             val.save(os.path.join(actualpath,key + suffix))
