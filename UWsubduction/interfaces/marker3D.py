@@ -141,7 +141,7 @@ class markerSurface3D(object):
         #fdirector = np.append(self.director.data,
         #                      self.director.data_shadow).reshape(-1,dims)
 
-        if uwmpi.size == 1 or self.director.data_shadow.shape[0] == 0:
+        if uw.mpi.size == 1 or self.director.data_shadow.shape[0] == 0:
             fdirector = self.director.data
             #print('1')
         elif self.director.data.shape[0] == 0:
@@ -171,7 +171,7 @@ class markerSurface3D(object):
         if self.empty:
             return np.empty((0,1)), np.empty(0, dtype="int")
 
-        if uwmpi.size == 1 or self.director.data_shadow.shape[0] == 0:
+        if uw.mpi.size == 1 or self.director.data_shadow.shape[0] == 0:
             fdirector = self.director.data
             print('1')
         elif self.director.data.shape[0] == 0:

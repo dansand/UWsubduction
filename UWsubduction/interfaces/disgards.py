@@ -17,7 +17,7 @@
         #serial is trivial.
         #For parallel, there may be data on local processor, or in shadow zone, or any combination of either.
         # as long as fdirector is the same shape as self.kdtree.data, this will work
-        if uwmpi.size == 1 or self.director.data_shadow.shape[0] == 0:
+        if uw.mpi.size == 1 or self.director.data_shadow.shape[0] == 0:
             fdirector = self.director.data
         elif self.director.data.shape[0] == 0:
             fdirector = self.director.data_shadow
@@ -73,7 +73,7 @@
         #serial is trivial.
         #For parallel, there may be data on local processor, or in shadow zone, or any combination of either.
         # as long as fdirector is the same shape as self.kdtree.data, this will work
-        if uwmpi.size == 1 or self.director.data_shadow.shape[0] == 0:
+        if uw.mpi.size == 1 or self.director.data_shadow.shape[0] == 0:
             fdirector = self.director.data
         elif self.director.data.shape[0] == 0:
             fdirector = self.director.data_shadow
