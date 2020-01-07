@@ -185,7 +185,7 @@ class interface2D(object):
         fpts = np.where( np.isinf(d) == False )[0]
         director = np.zeros_like(coords)
 
-        if uw.nProcs() == 1 or self.director.data_shadow.shape[0] == 0:
+        if uwmpi.size == 1 or self.director.data_shadow.shape[0] == 0:
             fdirector = self.director.data
         elif self.director.data.shape[0] == 0:
                 fdirector = self.director.data_shadow
@@ -221,7 +221,7 @@ class interface2D(object):
         #serial is trivial.
         #For parallel, there may be data on local processor, or in shadow zone, or any combination of either.
         # as long as fdirector is the same shape as self.kdtree.data, this will work
-        if uw.nProcs() == 1 or self.director.data_shadow.shape[0] == 0:
+        if uwmpi.size == 1 or self.director.data_shadow.shape[0] == 0:
             fdirector = self.director.data
         elif self.director.data.shape[0] == 0:
             fdirector = self.director.data_shadow

@@ -43,7 +43,7 @@ class checkpoint:
         #check the savepath for any subdirs representing checkpoints - default behav.
         if loadpath == 'default':
             d=self.savepath
-            subdirs = filter(lambda x: os.path.isdir(os.path.join(d, x)), os.listdir(d))
+            subdirs = list(filter(lambda x: os.path.isdir(os.path.join(d, x)), os.listdir(d)))
             subdirs.sort(key=float) #no need for the natsort module, can phase it out elsewhere
             if subdirs:
                 lpstring = self.savepath + subdirs[-1]
