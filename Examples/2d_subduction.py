@@ -37,7 +37,7 @@
 # May need to comment out in-line visualisation from the python script before running the model on a remote machine / cluster.
 #
 
-# In[1]:
+# In[79]:
 
 
 import sys
@@ -56,7 +56,7 @@ import warnings; warnings.simplefilter('ignore')
 from pint import UnitRegistry
 
 
-# In[2]:
+# In[80]:
 
 
 import UWsubduction as usub
@@ -82,7 +82,7 @@ from UWsubduction.utils import checkpoint
 #
 # Note that restarting from checkpoints is supported, and will take place when a model is run with the same  `Model` and `ModelNum` as previous run (more on this later)
 
-# In[3]:
+# In[81]:
 
 
 #Model letter identifier demarker
@@ -132,7 +132,7 @@ uw.mpi.barrier()
 #
 # The checkpoint class is defined in: UWsubduction/utils/checkpoint.py
 
-# In[4]:
+# In[82]:
 
 
 #*************CHECKPOINT-BLOCK**************#
@@ -146,7 +146,7 @@ if cp.restart:
 #*************CHECKPOINT-BLOCK**************#
 
 
-# In[5]:
+# In[83]:
 
 
 cp.restart, outputPath
@@ -171,14 +171,14 @@ cp.restart, outputPath
 # For more information see, `UWsubduction/Background/scaling`
 #
 
-# In[6]:
+# In[84]:
 
 
 #set up the units registy
 ur = uw.scaling.units
 
 
-# In[7]:
+# In[85]:
 
 
 #pd refers to dimensional physical parameters
@@ -232,7 +232,7 @@ fac = np.exp((dE + pd.refDensity.magnitude*pd.refGravity.magnitude*660e3*dV )/(d
 pd.diffusionPreExpLM = pd.diffusionPreExp*fac
 
 
-# In[8]:
+# In[86]:
 
 
 #md refers to dimensional model parameters
@@ -273,8 +273,20 @@ md.plasticInterface = True
 md.filesMyr = 0.25*ur.megayears
 md.slade=False
 md.courantFix = 1.0
-md.maxSteps = 5000
+md.maxSteps = 5
 md.faultppe = 4.    #particles per element in the fault swarm
+
+
+# In[87]:
+
+
+#When running as a script, we can provide command line arguments to set any of items in the parameter dictionaries
+
+#=> python script.py Model ModelNum pd.name=foo
+
+sysArgs = sys.argv
+utils.easy_args(sysArgs, pd)
+utils.easy_args(sysArgs, md)
 
 
 # ## Non-dimensionalisation
@@ -322,18 +334,12 @@ rayleighNumber = ((pd.refExpansivity*pd.refDensity*pd.refGravity*(pd.potentialTe
 pressureDepthGrad = ((pd.refDensity*pd.refGravity*pd.refLength**3).to_base_units()/(pd.refViscosity*pd.refDiffusivity).to_base_units()).magnitude
 
 
-# In[ ]:
-
-
-
-
-
-# In[10]:
+# In[78]:
 
 
 #print the timescale
+s2myr = (1.*ur.megayear).to_base_units().magnitude
 if uw.mpi.size == 1:
-    s2myr = 3600.*24*365*1e6
     print('Dimensionless time to Myr conversion is {}'.format( Kt.to_base_units().magnitude/s2myr ))
 
 
@@ -681,10 +687,6 @@ else:
 
 #Plot the proxyTempVariable, which represents the temperature ICs on the swarm
 
-#fig = glucifer.Figure(figsize=(1200, 300))
-#fig.append( glucifer.objects.Points(swarm, proxyTempVariable))
-#fig.show()
-#fig.save_database('test.gldb')
 
 
 # ##  Manage subduction interface evolution
@@ -820,16 +822,6 @@ dummy = usub.remove_faults_from_boundaries(tm, efCollection, faultRmfn )
 #glucifer.Figure?
 
 
-# In[31]:
-
-
-#figProx = glucifer.Figure(  boundingBox=((-0.05, 0.9), (0.15, 1.0)), edgecolour='None'  )
-#
-#figProx.append( glucifer.objects.Points(swarm , proximityVariable,  pointSize=2.5))
-#for f in efCollection:
-#    figProx.append( glucifer.objects.Points(f.swarm, pointSize=4))
-#figProx.show()
-#figProx.append( glucifer.objects.Mesh(mesh))
 
 
 # ## Project the swarm 'proxy temp' to mesh
@@ -1087,7 +1079,7 @@ solver.options.scr.ksp_rtol = 1.0e-4
 
 if not cp.restart:
     solver.solve(nonLinearIterate=True, nonLinearTolerance=nmd.nltol, callback_post_solve = pressure_calibrate)
-    solver.print_stats()
+    #solver.print_stats()
 
 
 # ## Set up the advection - diffusion system
@@ -1242,7 +1234,7 @@ def update_tect_model(tectModel, tmUwMap, time, dt = 0.0 ):
 # In[55]:
 
 
-update_tect_model(tm, tmUwMap, 0, dt = 0.0 )
+#update_tect_model(tm, tmUwMap, 0, dt = 0.0 )
 
 
 # In[56]:
@@ -1295,7 +1287,7 @@ def xdmfs_update():
 
 
 def write_checkpoint(step_, time_):
-    cp.saveObjs(step_, time_)
+    #cp.saveObjs(step_, time_)
     cp.saveDicts(step_, time_)
 
 
@@ -1325,8 +1317,8 @@ next_image_step = (np.floor(time/files_freq)+ 1.) *files_freq
 if not cp.restart:
     write_checkpoint(step, time)
 
-
-# In[ ]:
+print("*************************Start of main loop")
+# In[68]:
 
 
 while time < tm.times[-1] and step < nmd.maxSteps:

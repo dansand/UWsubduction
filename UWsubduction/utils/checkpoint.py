@@ -142,7 +142,8 @@ class checkpoint:
                 os.makedirs(actualpath)
 
 
-        self.uwContext.mpi.barrier()
+        #self.uwContext.mpi.barrier()
+
         #now save the object with the
         for key, val in self.objDict.items():
             val.save(os.path.join(actualpath,key + suffix))
