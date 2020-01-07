@@ -137,7 +137,7 @@ class checkpoint:
             actualpath = savepath
 
         # make directories if they don't exist
-        if self.uwContext.rank()==0:
+        if self.uwContext.mpi.rank==0:
             if not os.path.isdir(actualpath):
                 os.makedirs(actualpath)
 
