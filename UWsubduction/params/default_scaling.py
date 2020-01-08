@@ -6,7 +6,7 @@
 from underworld import scaling as sub_scaling
 
 
-from minimal_example import pd, md
+from UWsubduction.params.minimal_example import pd, md
 from easydict import EasyDict as edict
 
 paramDict_dim = pd
