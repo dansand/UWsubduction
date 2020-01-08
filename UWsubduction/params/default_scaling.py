@@ -4,10 +4,9 @@
 #    import unsupported.geodynamics.scaling as sub_scaling;
 
 from underworld import scaling as sub_scaling
-
-
 from UWsubduction.params.minimal_example import pd, md
 from easydict import EasyDict as edict
+from UWsubduction import params
 
 paramDict_dim = pd
 modelDict_dim = md
@@ -52,8 +51,8 @@ scaling_coefficients["[time]"] =        Kt.to_base_units()
 
 
 #build the dimensionless dictionaries
-paramDict  = build_nondim_dict(pd, sub_scaling)
-modelDict= build_nondim_dict(md, sub_scaling)
+paramDict  = params.build_nondim_dict(pd, sub_scaling)
+modelDict= params.build_nondim_dict(md, sub_scaling)
 
 
 
