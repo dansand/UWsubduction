@@ -37,7 +37,7 @@
 # May need to comment out in-line visualisation from the python script before running the model on a remote machine / cluster.
 #
 
-# In[2]:
+# In[4]:
 
 
 import sys
@@ -56,20 +56,13 @@ import warnings; warnings.simplefilter('ignore')
 from pint import UnitRegistry
 
 
-# In[3]:
+# In[5]:
 
 
 import UWsubduction as usub
 import UWsubduction.params as params
 import UWsubduction.utils as utils
 from UWsubduction.utils import checkpoint
-#from UWsubduction import interfaces
-
-
-# In[ ]:
-
-
-
 
 
 # ## Create output directory structure
@@ -82,7 +75,7 @@ from UWsubduction.utils import checkpoint
 #
 # Note that restarting from checkpoints is supported, and will take place when a model is run with the same  `Model` and `ModelNum` as previous run (more on this later)
 
-# In[4]:
+# In[6]:
 
 
 #Model letter identifier demarker
@@ -132,7 +125,7 @@ uw.mpi.barrier()
 #
 # The checkpoint class is defined in: UWsubduction/utils/checkpoint.py
 
-# In[5]:
+# In[7]:
 
 
 #*************CHECKPOINT-BLOCK**************#
@@ -146,7 +139,7 @@ if cp.restart:
 #*************CHECKPOINT-BLOCK**************#
 
 
-# In[6]:
+# In[8]:
 
 
 #cp.objDict.items()
@@ -171,14 +164,14 @@ if cp.restart:
 # For more information see, `UWsubduction/Background/scaling`
 #
 
-# In[7]:
+# In[9]:
 
 
 #set up the units registy
 ur = uw.scaling.units
 
 
-# In[8]:
+# In[10]:
 
 
 #pd refers to dimensional physical parameters
@@ -194,7 +187,7 @@ pd.refViscosity = 1e20* ur.pascal* ur.second
 pd.refLength = 2900*ur.km
 pd.gasConstant = 8.314*ur.joule/(ur.mol*ur.kelvin)                  #gas constant
 pd.specificHeat = 1250.4*ur.joule/(ur.kilogram* ur.kelvin)          #Specific heat (Jkg-1K-1)
-pd.potentialTemp = 1573.*ur.kelvin                                  #mantle potential temp (K)
+pd.potentialTemp = 1673.*ur.kelvin                                  #mantle potential temp (K)
 pd.surfaceTemp = 273.*ur.kelvin                                     #surface temp (K)
 
 #the underscores here represent the temperatures shifted by the value of the surface temp
@@ -207,11 +200,11 @@ pd.cohesionMantle = 20.*ur.megapascal                              #mantle cohes
 pd.frictionMantle = ur.Quantity(0.1)                                           #mantle friction coefficient in Byerlee law (tan(phi))
 pd.frictionMantleDepth = pd.frictionMantle*pd.refDensity*pd.refGravity
 pd.diffusionPreExp = 1.87e9*ur.pascal*ur.second                  #pre-exp factor for diffusion creep
-pd.diffusionEnergy = 3e5*ur.joule/(ur.mol)
+pd.diffusionEnergy = 3.16e5*ur.joule/(ur.mol)
 pd.diffusionEnergyDepth = pd.diffusionEnergy*(1./pd.gasConstant)
 pd.diffusionEnergyLM = 2e5*ur.joule/(ur.mol)
 pd.diffusionEnergyLMDepth = pd.diffusionEnergyLM*(1./pd.gasConstant)
-pd.diffusionVolume=5.0e-6*ur.meter**3/(ur.mol)
+pd.diffusionVolume=5.27e-6*ur.meter**3/(ur.mol)
 pd.diffusionVolumeDepth=pd.diffusionVolume.magnitude*pd.refDensity.magnitude*pd.refGravity.magnitude*ur.joule/(ur.mol*pd.gasConstant*ur.meter)
 pd.diffusionVolumeLM=1.5e-6*ur.meter**3/(ur.mol)
 pd.diffusionVolumeLMDepth=pd.diffusionVolumeLM.magnitude*pd.refDensity.magnitude*pd.refGravity.magnitude*ur.joule/(ur.mol*pd.gasConstant*ur.meter)
@@ -232,7 +225,7 @@ fac = np.exp((dE + pd.refDensity.magnitude*pd.refGravity.magnitude*660e3*dV )/(d
 pd.diffusionPreExpLM = pd.diffusionPreExp*fac
 
 
-# In[9]:
+# In[11]:
 
 
 #md refers to dimensional model parameters
@@ -241,15 +234,16 @@ md = edict({})
 #Model geometry, and misc Lengths used to control behaviour
 md.depth=1000*ur.km                                                #Model Depth
 md.aspectRatio=5.0
-#lengths, factors relating to subduction fault behaviour
-md.faultViscDepthTaperStart = 100*ur.km
+#additional aspects of subduction fault behaviour
 md.faultThickness = 10.*ur.km
+md.faultViscDepthTaperStart = 110*ur.km
 md.faultLocFac = 1.                                                #this is the relative location of the fault in terms of the fault thickess from the top of slab
 md.faultDestroyDepth = 500*ur.km
+#
 md.lowerMantleDepth=660.*ur.km
 md.lowerMantleTransWidth=100.*ur.km
 #Slab and plate init. parameters
-md.subZoneLoc=100*ur.km                                           #X position of subduction zone...km
+md.subZoneLoc=100*ur.km                                           #X position of subduction zone, relative to the origin at the center of the box
 md.slabInitMaxDepth=150*ur.km
 md.radiusOfCurv = 200.*ur.km                                        #radius of curvature
 md.slabAge=50.*ur.megayears                                      #age of subduction plate at trench
@@ -277,7 +271,7 @@ md.maxSteps = 5
 md.faultppe = 4.    #particles per element in the fault swarm
 
 
-# In[10]:
+# In[12]:
 
 
 #When running as a script, we can provide command line arguments to set any of items in the parameter dictionaries
@@ -296,12 +290,6 @@ utils.easy_args(sysArgs, md)
 # The `build_nondim_dict` function creates dimensionless versions of the parameter dictionaries (called `npd`, `nmd`)
 #
 # The Rayleigh number is defined, as well as a scale called `pressureDepthGrad', which is used to non-dimensonalise the  coefficient of friction , so it can written as a coefficient that multiplies the dimensionless depth (rather than the dimensionless pressure)
-
-# In[ ]:
-
-
-
-
 
 # In[11]:
 
@@ -359,17 +347,13 @@ if cp.restart and md.restartParams:
     with open(os.path.join(cp.loadpath, 'md.pkl'), 'rb') as fp:
         md = pickle.load(fp)
 
-    #and check if additional command line args are being providied
-
+    #and check if additional command line args are also being provided
     utils.easy_args(sysArgs, pd)
     utils.easy_args(sysArgs, md)
 
-    #and then create dimensionless versions of the parameter dictionaries
+    #create dimensionless versions of the parameter dictionaries
     npd = params.build_nondim_dict(pd  , sca)
     nmd = params.build_nondim_dict(md  , sca)
-
-
-
 
 
 #add paramter dictionaries to to the checkpointinng object
@@ -393,8 +377,8 @@ xres = int(nmd.res*nmd.aspectRatio)
 halfWidth = 0.5*nmd.depth*nmd.aspectRatio
 
 #The origin of the x axis is in the centre of the box,
+# The value of md.subZoneLoc is relative to the origin
 #The surface of the box has a value of 1.0 in the y axis,
-
 minCoord_    = (-1.*halfWidth, 1. - nmd.depth)
 maxCoord_    = (halfWidth, 1.)
 
@@ -689,6 +673,11 @@ else:
 #md.aspectRatio
 
 
+# In[25]:
+
+
+#Plot the proxyTempVariable, which represents the temperature ICs on the swarm
+
 
 
 # ##  Manage subduction interface evolution
@@ -772,8 +761,7 @@ if not cp.restart:
 
 
 minDistFac = 1.0
-
-minDistInitFac = 1.9 #build interface out to this dist initially
+minDistInitFac = 1.9      #build interface out to this dist initially
 maxDistFac = 1.9
 
 
@@ -816,6 +804,11 @@ for f in efCollection:
 dummy = usub.remove_fault_drift(efCollection, faultloc)
 dummy = usub.pop_or_perish(tm, efCollection, faultMasterSwarm, faultAddFn , ds)
 dummy = usub.remove_faults_from_boundaries(tm, efCollection, faultRmfn )
+
+
+# In[31]:
+
+
 
 
 # ## Project the swarm 'proxy temp' to mesh
