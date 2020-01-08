@@ -37,7 +37,7 @@
 # May need to comment out in-line visualisation from the python script before running the model on a remote machine / cluster.
 #
 
-# In[4]:
+# In[27]:
 
 
 import sys
@@ -56,7 +56,7 @@ import warnings; warnings.simplefilter('ignore')
 from pint import UnitRegistry
 
 
-# In[5]:
+# In[28]:
 
 
 import UWsubduction as usub
@@ -75,7 +75,7 @@ from UWsubduction.utils import checkpoint
 #
 # Note that restarting from checkpoints is supported, and will take place when a model is run with the same  `Model` and `ModelNum` as previous run (more on this later)
 
-# In[6]:
+# In[29]:
 
 
 #Model letter identifier demarker
@@ -125,7 +125,7 @@ uw.mpi.barrier()
 #
 # The checkpoint class is defined in: UWsubduction/utils/checkpoint.py
 
-# In[7]:
+# In[30]:
 
 
 #*************CHECKPOINT-BLOCK**************#
@@ -139,7 +139,7 @@ if cp.restart:
 #*************CHECKPOINT-BLOCK**************#
 
 
-# In[8]:
+# In[31]:
 
 
 #cp.objDict.items()
@@ -164,14 +164,14 @@ if cp.restart:
 # For more information see, `UWsubduction/Background/scaling`
 #
 
-# In[9]:
+# In[32]:
 
 
 #set up the units registy
 ur = uw.scaling.units
 
 
-# In[10]:
+# In[33]:
 
 
 #pd refers to dimensional physical parameters
@@ -225,7 +225,7 @@ fac = np.exp((dE + pd.refDensity.magnitude*pd.refGravity.magnitude*660e3*dV )/(d
 pd.diffusionPreExpLM = pd.diffusionPreExp*fac
 
 
-# In[11]:
+# In[34]:
 
 
 #md refers to dimensional model parameters
@@ -271,7 +271,7 @@ md.maxSteps = 5
 md.faultppe = 4.    #particles per element in the fault swarm
 
 
-# In[12]:
+# In[35]:
 
 
 #When running as a script, we can provide command line arguments to set any of items in the parameter dictionaries
@@ -291,7 +291,7 @@ utils.easy_args(sysArgs, md)
 #
 # The Rayleigh number is defined, as well as a scale called `pressureDepthGrad', which is used to non-dimensonalise the  coefficient of friction , so it can written as a coefficient that multiplies the dimensionless depth (rather than the dimensionless pressure)
 
-# In[11]:
+# In[36]:
 
 
 scaling_coefficients = sca.get_coefficients()
@@ -322,7 +322,7 @@ rayleighNumber = ((pd.refExpansivity*pd.refDensity*pd.refGravity*(pd.potentialTe
 pressureDepthGrad = ((pd.refDensity*pd.refGravity*pd.refLength**3).to_base_units()/(pd.refViscosity*pd.refDiffusivity).to_base_units()).magnitude
 
 
-# In[12]:
+# In[37]:
 
 
 #print the timescale
@@ -331,7 +331,7 @@ if uw.mpi.size == 1:
     print('Dimensionless time to Myr conversion is {}'.format( Kt.to_base_units().magnitude/s2myr ))
 
 
-# In[13]:
+# In[38]:
 
 
 #*************CHECKPOINT-BLOCK**************#
@@ -365,7 +365,7 @@ cp.addDict(md, 'md')
 
 # ## Build / refine mesh, Stokes Variables
 
-# In[14]:
+# In[39]:
 
 
 
@@ -398,13 +398,13 @@ temperatureField    = uw.mesh.MeshVariable( mesh=mesh,         nodeDofCount=1 )
 temperatureDotField = uw.mesh.MeshVariable( mesh=mesh,         nodeDofCount=1 )
 
 
-velocityField.data[:] = 0.
+velocityField = uw.mesh.MeshVariable( mesh=mesh,         nodeDofCount=2)
 pressureField.data[:] = 0.
 temperatureField.data[:] = 0.
 temperatureDotField.data[:] = 0.
 
 
-# In[15]:
+# In[40]:
 
 
 #The mesh refinement strategy simply bunches nodes to increase the resolution near the center/top of model
@@ -430,7 +430,7 @@ if nmd.refineVert:
         mesh.data[:,1] = mesh.data[:,1] + 1.0
 
 
-# In[16]:
+# In[41]:
 
 
 #*************CHECKPOINT-BLOCK**************#
@@ -451,7 +451,7 @@ if cp.restart:
 #
 #
 
-# In[15]:
+# In[42]:
 
 
 endTime = ndimlz(40.5*ur.megayear)
@@ -460,7 +460,7 @@ refVel = ndimlz(2*ur.cm/ur.year)
 plateModelDt = ndimlz(0.1*ur.megayear) #generally only relevent of the TectonicModel is being used to set boundary conditions
 
 
-# In[16]:
+# In[43]:
 
 
 tm = usub.TectonicModel(mesh, 0, endTime, plateModelDt)
@@ -473,6 +473,7 @@ tm.add_plate(2, velocities=False)
 if not cp.restart:
     #add the plate boundaries
     tm.add_left_boundary(1, plateInitAge=0., velocities=False)
+    #Note that the first plate ID supplied here is the subducting plate (1)
     tm.add_subzone(1, 2, nmd.subZoneLoc, subInitAge=nmd.slabAge, upperInitAge=nmd.upperPlateAgeAtTrench)
     tm.add_right_boundary(2, plateInitAge=0.0, velocities=False)
 
@@ -497,7 +498,7 @@ cp.addDict(tmDict, 'tmDict')
 
 # ## Build plate age and temperature functions
 
-# In[17]:
+# In[44]:
 
 
 #These are covenience functions to reference the spatial domain
@@ -507,7 +508,7 @@ depthFn = mesh.maxCoord[1] - coordinate[1]
 yFn = coordinate[1]
 
 
-# In[18]:
+# In[45]:
 
 
 #create convenient names for the plateId function and plate age function
@@ -520,7 +521,7 @@ fnAge_map = fn.branching.map(fn_key = pIdFn ,
                           mapping = pAgeDict )
 
 
-# In[19]:
+# In[46]:
 
 
 #2.32 sqrt(k'*t') is the isotherm depth corresponding to  ~ 0.9*potentialTemp
@@ -632,7 +633,7 @@ efCollection = usub.interface_collection([])
 
 if not cp.restart:
 
-    #This built build 1 subduction fault object (interface2D) per subduction zone in the TectonicModel
+    #This builds 1 embedded fault (interface2D) per subduction zone in the TectonicModel
     for e in tm.undirected.edges():
         if tm.is_subduction_boundary(e):
             usub.build_slab_distance(tm, e, circGradientFn, nmd.slabInitMaxDepth, tmUwMap)
@@ -642,7 +643,7 @@ if not cp.restart:
             efCollection.append(sub_interface)
 
     #This  bit builds the temperature perturbation for the slab
-    #which is simply a halfspace profile, normal
+    #which is simply a halfspace profile, normal to the embedded fault
 
     usub.build_slab_temp(tmUwMap, npd.potentialTemp_, nmd.slabAge)
     fnJointTemp = fn.misc.min(proxyTempVariable, plateTempFn)
@@ -678,6 +679,10 @@ else:
 
 #Plot the proxyTempVariable, which represents the temperature ICs on the swarm
 
+#fig = glucifer.Figure(figsize=(1200, 300))
+#fig.append( glucifer.objects.Points(swarm, proxyTempVariable))
+#fig.show()
+#fig.save_database('test.gldb')
 
 
 # ##  Manage subduction interface evolution
@@ -807,7 +812,6 @@ dummy = usub.remove_faults_from_boundaries(tm, efCollection, faultRmfn )
 
 
 # In[31]:
-
 
 
 
@@ -1255,6 +1259,17 @@ def update_mask_fns():
     return faultRmfn, faultAddFn
 
 
+# In[ ]:
+
+
+viscMesh = uw.mesh.MeshVariable( mesh=mesh,         nodeDofCount=1 )
+
+def swarm_to_mesh_update():
+    #project viscosity to mesh
+    projector = uw.utils.MeshVariable_Projection( viscMesh ,viscosityMapFn, type=0 )
+    projector.solve()
+
+
 # In[57]:
 
 
@@ -1262,18 +1277,20 @@ def xdmfs_update():
 
 
     try:
-        _mH
+        mH5
     except:
-        _mH = mesh.save(xdmfPath+"mesh.h5")
+        mH5 = mesh.save(xdmfPath+"mesh.h5")
 
     #part1
-    mh = _mH
-    tH = temperatureField.save(xdmfPath + "temp_" + str(step) + ".h5")
+    tH5 = temperatureField.save(xdmfPath + "temp_" + str(step) + ".h5")
+    viscH5 = viscMesh.save(xdmfPath + "visc_" + str(step) + ".h5")
+
 
 
 
     #part 2
-    temperatureField.xdmf(xdmfPath + "temp_" + str(step), tH, 'temperature', mh, 'mesh', modeltime=time)
+    temperatureField.xdmf(xdmfPath + "temp_" + str(step), tH5, 'temperature', mH5, 'mesh', modeltime=time)
+    viscMesh.xdmf(xdmfPath+ "visc_" + str(step), viscH5 , 'visc', mH5, 'mesh', modeltime=time)
 
 
 # In[58]:
