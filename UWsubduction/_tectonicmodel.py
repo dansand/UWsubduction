@@ -801,7 +801,7 @@ class TectonicModel(nx.DiGraph):
     def plate_vel_node_fn(self, time, boundtol=1e-5, maskFn = fn.misc.constant(True)):
 
         """
-        This method is very similar to the plateIdFn but here we mask for any plate where viscosity is not set.
+        This method is very similar to the plateIdFn but here we mask for any plate where velocity is not set.
         The resulting Underworld function can be used to set velocities on nodes local to the plate
         """
 

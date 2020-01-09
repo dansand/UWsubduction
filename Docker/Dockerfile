@@ -9,7 +9,6 @@ RUN pip3 install easydict
 RUN pip3 install naturalsort
 RUN pip3 install "networkx==1.11"
 RUN pip3 install pint
-RUN pip3 install pandas
 
 
 USER root
